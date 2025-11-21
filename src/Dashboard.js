@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from './AuthContext'
 import { supabase } from './supabaseClient'
+import QuickEntry from './QuickEntry'
 
 const Dashboard = () => {
   const { user, signOut, isAdmin } = useAuth()
@@ -27,6 +28,12 @@ const Dashboard = () => {
     } finally {
       setLoading(false)
     }
+  }
+
+  // This gets called when QuickEntry successfully logs units
+  const handleEntrySuccess = () => {
+    // Refresh the accounts list (in future, this will refresh progress bars)
+    fetchAccounts()
   }
 
   return (
@@ -58,7 +65,12 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Sample section - YOU'LL REPLACE THIS */}
+        {/* Quick Entry Form - THE NEW ADDITION */}
+        <div className="mb-6">
+          <QuickEntry onSuccess={handleEntrySuccess} />
+        </div>
+
+        {/* Accounts section */}
         <div className="bg-gray-800 rounded-lg p-6 mb-6">
           <h2 className="text-xl font-semibold text-white mb-4">Accounts</h2>
           
@@ -87,14 +99,14 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Where YOU'LL add more sections */}
+        {/* Next steps section */}
         <div className="bg-gray-800 rounded-lg p-6">
           <h2 className="text-xl font-semibold text-white mb-4">Next Steps</h2>
           <ul className="space-y-2 text-gray-300">
             <li>✅ Login system working</li>
             <li>✅ Database connection working</li>
             <li>✅ Fetching data working</li>
-            <li className="text-yellow-400">⏳ Add: Quick entry form</li>
+            <li className="text-green-400">✅ Quick entry form DONE!</li>
             <li className="text-yellow-400">⏳ Add: Progress calculations</li>
             <li className="text-yellow-400">⏳ Add: Filters</li>
             <li className="text-yellow-400">⏳ Add: Admin panel</li>
