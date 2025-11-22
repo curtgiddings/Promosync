@@ -2,15 +2,15 @@ import React, { useState, useEffect } from 'react'
 import Select from 'react-select'
 import { useAuth } from './AuthContext'
 import { supabase } from './supabaseClient'
+import AddAccountModal from './AddAccountModal'
 
 /**
- * QuickEntry v2 Component
+ * QuickEntry v3 Component
  * 
- * Improved version with:
- * - Searchable dropdowns (react-select)
- * - Auto-fills promo based on account selection
- * - Warns if account not on promo
- * - Better UX for logging units
+ * Enhanced with:
+ * - Create new accounts from search
+ * - "No results? Add new account" option
+ * - Better UX and feedback
  */
 
 const QuickEntry = ({ onSuccess, preSelectedAccount = null }) => {
@@ -27,17 +27,19 @@ const QuickEntry = ({ onSuccess, preSelectedAccount = null }) => {
   const [accountPromoInfo, setAccountPromoInfo] = useState(null)
   const [units, setUnits] = useState('')
   const [notes, setNotes] = useState('')
+  const [searchTerm, setSearchTerm] = useState('')
   
   // UI states
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState({ type: '', text: '' })
+  const [showAddAccount, setShowAddAccount] = useState(false)
 
   // Fetch accounts and promos when component loads
   useEffect(() => {
     fetchData()
   }, [])
 
-  // Pre-select account if provided (from ProgressCard quick log button)
+  // Pre-select account if provided
   useEffect(() => {
     if (preSelectedAccount && accounts.length > 0) {
       const account = accounts.find(a => a.id === preSelectedAccount.id)
@@ -199,6 +201,25 @@ const QuickEntry = ({ onSuccess, preSelectedAccount = null }) => {
     }
   }
 
+  const handleAddNewAccount = (newAccount) => {
+    // Refresh accounts list
+    fetchData()
+    
+    // Auto-select the new account
+    setSelectedAccount({
+      value: newAccount.id,
+      label: `${newAccount.account_name} - ${newAccount.territory}`,
+      account: newAccount
+    })
+    
+    // Trigger promo check
+    handleAccountChange({
+      value: newAccount.id,
+      label: `${newAccount.account_name} - ${newAccount.territory}`,
+      account: newAccount
+    })
+  }
+
   // Custom styles for react-select (dark theme)
   const selectStyles = {
     control: (base) => ({
@@ -232,6 +253,10 @@ const QuickEntry = ({ onSuccess, preSelectedAccount = null }) => {
       ...base,
       color: '#9CA3AF',
     }),
+    noOptionsMessage: (base) => ({
+      ...base,
+      color: '#9CA3AF',
+    }),
   }
 
   if (loading) {
@@ -252,6 +277,23 @@ const QuickEntry = ({ onSuccess, preSelectedAccount = null }) => {
     account: account
   }))
 
+  // Custom NoOptionsMessage with "Add New" button
+  const NoOptionsMessage = (props) => {
+    return (
+      <div className="p-4 text-center">
+        <p className="text-gray-400 mb-3">No accounts found matching "{searchTerm}"</p>
+        <button
+          type="button"
+          onClick={() => setShowAddAccount(true)}
+          className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition flex items-center justify-center space-x-2"
+        >
+          <span className="text-xl">➕</span>
+          <span>Create "{searchTerm}" as new account</span>
+        </button>
+      </div>
+    )
+  }
+
   // Format promos for react-select
   const promoOptions = promos.map(promo => ({
     value: promo.id,
@@ -261,7 +303,10 @@ const QuickEntry = ({ onSuccess, preSelectedAccount = null }) => {
 
   return (
     <div className="bg-gray-800 rounded-lg p-6">
-      <h2 className="text-xl font-semibold text-white mb-4">Quick Entry</h2>
+      <h2 className="text-xl font-semibold text-white mb-4 flex items-center space-x-2">
+        <span className="text-2xl">➕</span>
+        <span>Quick Entry</span>
+      </h2>
       
       {/* Message banner */}
       {message.text && (
@@ -284,12 +329,17 @@ const QuickEntry = ({ onSuccess, preSelectedAccount = null }) => {
           <Select
             value={selectedAccount}
             onChange={handleAccountChange}
+            onInputChange={(value) => setSearchTerm(value)}
             options={accountOptions}
             styles={selectStyles}
-            placeholder="Search accounts..."
+            placeholder="🔍 Search or create new account..."
             isSearchable
             isClearable
+            components={{ NoOptionsMessage }}
           />
+          <p className="mt-2 text-xs text-gray-400">
+            💡 Type to search. If not found, you can create it!
+          </p>
         </div>
 
         {/* Promo dropdown */}
@@ -349,7 +399,7 @@ const QuickEntry = ({ onSuccess, preSelectedAccount = null }) => {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition duration-200"
+          className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition duration-200 shadow-lg"
         >
           {submitting ? 'Logging...' : 'Log Units'}
         </button>
@@ -359,6 +409,15 @@ const QuickEntry = ({ onSuccess, preSelectedAccount = null }) => {
       <div className="mt-4 text-sm text-gray-400">
         <p>💡 Start typing to search accounts. Units are logged with today's date.</p>
       </div>
+
+      {/* Add Account Modal */}
+      {showAddAccount && (
+        <AddAccountModal
+          accountName={searchTerm}
+          onClose={() => setShowAddAccount(false)}
+          onSuccess={handleAddNewAccount}
+        />
+      )}
     </div>
   )
 }
