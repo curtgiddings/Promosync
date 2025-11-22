@@ -11,11 +11,13 @@ const Dashboard = () => {
   
   // Data
   const [accounts, setAccounts] = useState([])
+  const [accountProgress, setAccountProgress] = useState({}) // Store progress for each account
   const [loading, setLoading] = useState(true)
   
   // Search and filters
   const [searchTerm, setSearchTerm] = useState('')
   const [territoryFilter, setTerritoryFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all') // all, behind, ontrack, met
   
   // Modals
   const [showQuickEntry, setShowQuickEntry] = useState(false)
@@ -37,6 +39,9 @@ const Dashboard = () => {
 
       if (error) throw error
       setAccounts(data || [])
+      
+      // Calculate progress for each account
+      await calculateAllProgress(data || [])
     } catch (error) {
       console.error('Error fetching accounts:', error)
     } finally {
@@ -44,10 +49,47 @@ const Dashboard = () => {
     }
   }
 
+  const calculateAllProgress = async (accountsList) => {
+    const progressMap = {}
+    
+    for (const account of accountsList) {
+      try {
+        // Get account promo
+        const { data: accountPromo } = await supabase
+          .from('account_promos')
+          .select('target_units, promo_id')
+          .eq('account_id', account.id)
+          .order('assigned_date', { ascending: false })
+          .limit(1)
+          .single()
+
+        if (accountPromo) {
+          // Get transactions
+          const { data: transactions } = await supabase
+            .from('transactions')
+            .select('units_sold')
+            .eq('account_id', account.id)
+            .eq('promo_id', accountPromo.promo_id)
+
+          const totalUnits = transactions?.reduce((sum, t) => sum + t.units_sold, 0) || 0
+          const progress = Math.round((totalUnits / accountPromo.target_units) * 100)
+          
+          progressMap[account.id] = progress
+        } else {
+          progressMap[account.id] = -1 // No promo assigned
+        }
+      } catch (error) {
+        progressMap[account.id] = -1
+      }
+    }
+    
+    setAccountProgress(progressMap)
+  }
+
   // Get unique territories
   const territories = ['all', ...new Set(accounts.map(a => a.territory).filter(Boolean))]
 
-  // Filter accounts based on search and filters
+  // Filter accounts based on search, territory, and status
   const filteredAccounts = accounts.filter(account => {
     // Search filter
     const matchesSearch = 
@@ -57,8 +99,99 @@ const Dashboard = () => {
     // Territory filter
     const matchesTerritory = territoryFilter === 'all' || account.territory === territoryFilter
     
-    return matchesSearch && matchesTerritory
+    // Status filter
+    let matchesStatus = true
+    if (statusFilter !== 'all') {
+      const progress = accountProgress[account.id]
+      if (statusFilter === 'behind') {
+        matchesStatus = progress >= 0 && progress < 75
+      } else if (statusFilter === 'ontrack') {
+        matchesStatus = progress >= 75 && progress < 100
+      } else if (statusFilter === 'met') {
+        matchesStatus = progress >= 100
+      }
+    }
+    
+    return matchesSearch && matchesTerritory && matchesStatus
   })
+
+  // Export to Excel (CSV format)
+  const exportToCSV = async (territory = 'all') => {
+    try {
+      // Fetch all data needed for export
+      const accountsToExport = territory === 'all' 
+        ? accounts 
+        : accounts.filter(a => a.territory === territory)
+
+      const exportData = []
+
+      for (const account of accountsToExport) {
+        // Get account promo info
+        const { data: accountPromo } = await supabase
+          .from('account_promos')
+          .select(`
+            target_units,
+            terms,
+            promos (promo_name, discount)
+          `)
+          .eq('account_id', account.id)
+          .order('assigned_date', { ascending: false })
+          .limit(1)
+          .single()
+
+        // Get total units
+        let totalUnits = 0
+        let progress = 0
+        if (accountPromo) {
+          const { data: transactions } = await supabase
+            .from('transactions')
+            .select('units_sold')
+            .eq('account_id', account.id)
+
+          totalUnits = transactions?.reduce((sum, t) => sum + t.units_sold, 0) || 0
+          progress = Math.round((totalUnits / accountPromo.target_units) * 100)
+        }
+
+        exportData.push({
+          'Account Name': account.account_name,
+          'Territory': account.territory,
+          'Promo': accountPromo ? accountPromo.promos.promo_name : 'Not Assigned',
+          'Discount': accountPromo ? `${accountPromo.promos.discount}%` : 'N/A',
+          'Terms': accountPromo?.terms || 'N/A',
+          'Target': accountPromo?.target_units || 0,
+          'Units Sold': totalUnits,
+          'Progress': `${progress}%`,
+          'Status': progress >= 100 ? 'Met' : progress >= 75 ? 'On Track' : progress >= 0 ? 'Behind' : 'No Promo'
+        })
+      }
+
+      // Convert to CSV
+      const headers = Object.keys(exportData[0])
+      const csvContent = [
+        headers.join(','),
+        ...exportData.map(row => 
+          headers.map(header => `"${row[header]}"`).join(',')
+        )
+      ].join('\n')
+
+      // Download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+      link.setAttribute('href', url)
+      const filename = territory === 'all' 
+        ? 'PromoSync-All-Territories.csv' 
+        : `PromoSync-${territory}.csv`
+      link.setAttribute('download', filename)
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } catch (error) {
+      console.error('Error exporting:', error)
+      alert('Failed to export data. Please try again.')
+    }
+  }
 
   // Handle quick log from ProgressCard
   const handleQuickLog = (account, promoData) => {
@@ -135,11 +268,48 @@ const Dashboard = () => {
             <span className="text-xl">🔄</span>
             <span>Refresh</span>
           </button>
+
+          {/* Export Dropdown */}
+          <div className="relative group">
+            <button className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 flex items-center justify-center space-x-2 shadow-md hover:shadow-lg">
+              <span className="text-xl">📥</span>
+              <span>Export</span>
+              <span className="text-xs">▼</span>
+            </button>
+            
+            {/* Dropdown Menu */}
+            <div className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-30">
+              <button
+                onClick={() => exportToCSV('all')}
+                className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 rounded-t-lg transition"
+              >
+                📊 All Territories
+              </button>
+              <button
+                onClick={() => exportToCSV('Kelowna')}
+                className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition"
+              >
+                📍 Kelowna Only
+              </button>
+              <button
+                onClick={() => exportToCSV('Richmond')}
+                className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition"
+              >
+                📍 Richmond Only
+              </button>
+              <button
+                onClick={() => exportToCSV('Vancouver')}
+                className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 rounded-b-lg transition"
+              >
+                📍 Vancouver Only
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Search and Filters */}
+        {/* Search, Territory Filter, and Status Filter */}
         <div className="bg-gray-800 rounded-lg p-6 mb-6 shadow-xl space-y-4">
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col lg:flex-row gap-4">
             {/* Search Bar */}
             <div className="flex-1">
               <div className="relative">
@@ -165,7 +335,7 @@ const Dashboard = () => {
             </div>
 
             {/* Territory Filter */}
-            <div className="w-full sm:w-56">
+            <div className="w-full lg:w-56">
               <select
                 value={territoryFilter}
                 onChange={(e) => setTerritoryFilter(e.target.value)}
@@ -180,17 +350,65 @@ const Dashboard = () => {
             </div>
           </div>
 
+          {/* Status Filter Buttons */}
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setStatusFilter('all')}
+              className={`px-4 py-2 rounded-lg font-semibold transition ${
+                statusFilter === 'all'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              All Accounts
+            </button>
+            <button
+              onClick={() => setStatusFilter('behind')}
+              className={`px-4 py-2 rounded-lg font-semibold transition flex items-center space-x-1 ${
+                statusFilter === 'behind'
+                  ? 'bg-red-600 text-white'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              <span>🔴</span>
+              <span>Behind</span>
+            </button>
+            <button
+              onClick={() => setStatusFilter('ontrack')}
+              className={`px-4 py-2 rounded-lg font-semibold transition flex items-center space-x-1 ${
+                statusFilter === 'ontrack'
+                  ? 'bg-yellow-600 text-white'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              <span>🟡</span>
+              <span>On Track</span>
+            </button>
+            <button
+              onClick={() => setStatusFilter('met')}
+              className={`px-4 py-2 rounded-lg font-semibold transition flex items-center space-x-1 ${
+                statusFilter === 'met'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              <span>🟢</span>
+              <span>Target Met</span>
+            </button>
+          </div>
+
           {/* Results count */}
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-400">
               Showing <span className="font-semibold text-white">{filteredAccounts.length}</span> of{' '}
               <span className="font-semibold text-white">{accounts.length}</span> accounts
             </span>
-            {(searchTerm || territoryFilter !== 'all') && (
+            {(searchTerm || territoryFilter !== 'all' || statusFilter !== 'all') && (
               <button
                 onClick={() => {
                   setSearchTerm('')
                   setTerritoryFilter('all')
+                  setStatusFilter('all')
                 }}
                 className="text-blue-400 hover:text-blue-300 transition flex items-center space-x-1"
               >
@@ -211,15 +429,16 @@ const Dashboard = () => {
           <div className="text-center py-12 bg-gray-800 rounded-lg">
             <span className="text-6xl mb-4 block">📭</span>
             <p className="text-gray-400 text-lg mb-4">
-              {searchTerm || territoryFilter !== 'all' 
+              {searchTerm || territoryFilter !== 'all' || statusFilter !== 'all'
                 ? 'No accounts match your filters' 
                 : 'No accounts yet. Add some in the database!'}
             </p>
-            {(searchTerm || territoryFilter !== 'all') && (
+            {(searchTerm || territoryFilter !== 'all' || statusFilter !== 'all') && (
               <button
                 onClick={() => {
                   setSearchTerm('')
                   setTerritoryFilter('all')
+                  setStatusFilter('all')
                 }}
                 className="mt-4 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
               >
