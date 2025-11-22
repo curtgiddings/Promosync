@@ -2,19 +2,29 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 
 /**
- * AssignPromo Modal
+ * AssignPromo v3 Component
  * 
- * Modal for assigning or changing an account's promo.
- * All reps can use this - not admin-only.
+ * Enhanced with:
+ * - 5 SY promos (two SY350 variants)
+ * - 30/60/90/120/150 terms option
+ * - Discount % display
  */
 
 const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
   const [promos, setPromos] = useState([])
   const [selectedPromo, setSelectedPromo] = useState('')
   const [targetUnits, setTargetUnits] = useState('')
+  const [terms, setTerms] = useState('')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+
+  const termsOptions = [
+    { value: 'No terms', label: 'No terms' },
+    { value: '30/60/90', label: '30/60/90' },
+    { value: '30/60/90/120', label: '30/60/90/120' },
+    { value: '30/60/90/120/150', label: '30/60/90/120/150' }
+  ]
 
   useEffect(() => {
     fetchPromos()
@@ -23,6 +33,7 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
     if (currentPromo) {
       setSelectedPromo(currentPromo.promo_id)
       setTargetUnits(currentPromo.target_units)
+      setTerms(currentPromo.terms || '')
     }
   }, [currentPromo])
 
@@ -32,7 +43,8 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
         .from('promos')
         .select('*')
         .eq('is_active', true)
-        .order('start_date', { ascending: false })
+        .order('default_target')
+        .order('discount', { ascending: false })
 
       if (error) throw error
       setPromos(data || [])
@@ -44,10 +56,21 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
     }
   }
 
+  const handlePromoChange = (e) => {
+    const promoId = e.target.value
+    setSelectedPromo(promoId)
+    
+    const promo = promos.find(p => p.id === promoId)
+    if (promo) {
+      setTargetUnits(promo.default_target)
+      setTerms(promo.terms || '')
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    if (!selectedPromo || !targetUnits) {
+    if (!selectedPromo || !targetUnits || !terms) {
       setError('Please fill in all fields')
       return
     }
@@ -68,6 +91,7 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
           .update({
             promo_id: selectedPromo,
             target_units: parseInt(targetUnits),
+            terms: terms
           })
           .eq('id', currentPromo.id)
 
@@ -80,6 +104,7 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
             account_id: account.id,
             promo_id: selectedPromo,
             target_units: parseInt(targetUnits),
+            terms: terms
           })
 
         if (insertError) throw insertError
@@ -93,17 +118,6 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
       setError('Failed to assign promo. Please try again.')
     } finally {
       setSubmitting(false)
-    }
-  }
-
-  const handlePromoChange = (e) => {
-    const promoId = e.target.value
-    setSelectedPromo(promoId)
-    
-    // Auto-fill default target if available
-    const selectedPromoData = promos.find(p => p.id === promoId)
-    if (selectedPromoData && !targetUnits) {
-      setTargetUnits(selectedPromoData.default_target)
     }
   }
 
@@ -159,20 +173,19 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
                 <option value="">Choose a promo...</option>
                 {promos.map((promo) => (
                   <option key={promo.id} value={promo.id}>
-                    {promo.promo_name} ({promo.promo_code})
+                    {promo.promo_name} - {promo.discount}% off ({promo.default_target} units)
                   </option>
                 ))}
               </select>
               
-              {/* Show promo details */}
+              {/* Show selected promo details */}
               {selectedPromo && (
-                <div className="mt-2 text-sm text-gray-400">
+                <div className="mt-2 text-sm text-blue-400">
                   {(() => {
                     const promo = promos.find(p => p.id === selectedPromo)
                     return promo ? (
                       <p>
-                        {new Date(promo.start_date).toLocaleDateString()} - {new Date(promo.end_date).toLocaleDateString()}
-                        {promo.terms && ` • ${promo.terms}`}
+                        💰 {promo.discount}% discount • Default terms: {promo.terms}
                       </p>
                     ) : null
                   })()}
@@ -195,7 +208,30 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
                 required
               />
               <p className="mt-2 text-sm text-gray-400">
-                How many units should this account sell for this promo?
+                Default target for selected promo. You can adjust if needed.
+              </p>
+            </div>
+
+            {/* Billing Terms */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Billing Terms <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={terms}
+                onChange={(e) => setTerms(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              >
+                <option value="">Choose terms...</option>
+                {termsOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-2 text-sm text-gray-400">
+                Select billing terms for this account.
               </p>
             </div>
 
@@ -221,7 +257,7 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
 
         {/* Help Text */}
         <div className="mt-4 text-sm text-gray-500">
-          <p>💡 Tip: Any rep can assign or change promos for accounts.</p>
+          <p>💡 Two SY350 options: 10% (4 terms) or 8% (5 terms with extended payment)</p>
         </div>
       </div>
     </div>
