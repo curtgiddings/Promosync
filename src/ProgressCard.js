@@ -2,13 +2,12 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 
 /**
- * ProgressCard v3 Component
+ * ProgressCard v5 Component
  * 
  * Enhanced with:
- * - Expandable transaction history
- * - Better icons and badges
- * - Status indicators
- * - Improved visual hierarchy
+ * - Discount % display next to promo (e.g., "SY125 (7%)")
+ * - Support for 5 promos
+ * - All previous features
  */
 
 const ProgressCard = ({ account, onAssignPromo, onQuickLog, onUpdate }) => {
@@ -33,6 +32,7 @@ const ProgressCard = ({ account, onAssignPromo, onQuickLog, onUpdate }) => {
             id,
             promo_name,
             promo_code,
+            discount,
             start_date,
             end_date,
             is_active
@@ -155,13 +155,20 @@ const ProgressCard = ({ account, onAssignPromo, onQuickLog, onUpdate }) => {
       {/* Promo Status */}
       {isOnPromo ? (
         <div className="space-y-4">
-          {/* Promo Info */}
+          {/* Promo Info with Discount % and Terms */}
           <div className="flex items-center justify-between bg-gray-700/50 rounded-lg p-3">
             <div className="flex items-center space-x-2">
               <span className="text-2xl">🎯</span>
               <div>
-                <p className="text-white font-semibold">{promoData.promos.promo_name}</p>
-                <p className="text-xs text-gray-400">Code: {promoData.promos.promo_code}</p>
+                <p className="text-white font-semibold text-lg">
+                  {promoData.promos.promo_name}
+                  {promoData.promos.discount && (
+                    <span className="text-green-400 ml-2">({promoData.promos.discount}%)</span>
+                  )}
+                </p>
+                {promoData.terms && (
+                  <p className="text-sm text-gray-400">Terms: {promoData.terms}</p>
+                )}
               </div>
             </div>
             <button
@@ -219,7 +226,7 @@ const ProgressCard = ({ account, onAssignPromo, onQuickLog, onUpdate }) => {
               {/* Expandable History */}
               {showHistory && (
                 <div className="mt-2 space-y-2 max-h-64 overflow-y-auto">
-                  {transactions.map((transaction, index) => (
+                  {transactions.map((transaction) => (
                     <div
                       key={transaction.id}
                       className="bg-gray-700/50 rounded-lg p-3 text-sm border-l-4 border-blue-500"
