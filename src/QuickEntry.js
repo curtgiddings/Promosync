@@ -5,12 +5,12 @@ import { supabase } from './supabaseClient'
 import AddAccountModal from './AddAccountModal'
 
 /**
- * QuickEntry v3 Component
+ * QuickEntry v4 Component - Fixed
  * 
- * Enhanced with:
- * - Create new accounts from search
- * - "No results? Add new account" option
- * - Better UX and feedback
+ * Bug fixes:
+ * - Only shows accounts that are on active promos
+ * - Clear messaging about filtered accounts
+ * - Better error handling
  */
 
 const QuickEntry = ({ onSuccess, preSelectedAccount = null }) => {
@@ -18,6 +18,7 @@ const QuickEntry = ({ onSuccess, preSelectedAccount = null }) => {
   
   // Data from database
   const [accounts, setAccounts] = useState([])
+  const [accountsOnPromos, setAccountsOnPromos] = useState([]) // NEW: filtered list
   const [promos, setPromos] = useState([])
   const [loading, setLoading] = useState(true)
   
@@ -41,8 +42,8 @@ const QuickEntry = ({ onSuccess, preSelectedAccount = null }) => {
 
   // Pre-select account if provided
   useEffect(() => {
-    if (preSelectedAccount && accounts.length > 0) {
-      const account = accounts.find(a => a.id === preSelectedAccount.id)
+    if (preSelectedAccount && accountsOnPromos.length > 0) {
+      const account = accountsOnPromos.find(a => a.id === preSelectedAccount.id)
       if (account) {
         handleAccountChange({ 
           value: account.id, 
@@ -51,7 +52,7 @@ const QuickEntry = ({ onSuccess, preSelectedAccount = null }) => {
         })
       }
     }
-  }, [preSelectedAccount, accounts])
+  }, [preSelectedAccount, accountsOnPromos])
 
   const fetchData = async () => {
     try {
@@ -74,6 +75,10 @@ const QuickEntry = ({ onSuccess, preSelectedAccount = null }) => {
 
       setAccounts(accountsData || [])
       setPromos(promosData || [])
+
+      // NEW: Filter accounts to only those on promos
+      await filterAccountsOnPromos(accountsData || [])
+
     } catch (error) {
       console.error('Error fetching data:', error)
       setMessage({ type: 'error', text: 'Failed to load accounts and promos' })
@@ -82,7 +87,31 @@ const QuickEntry = ({ onSuccess, preSelectedAccount = null }) => {
     }
   }
 
-  // When account is selected, auto-fill promo if assigned
+  // NEW: Filter accounts to only show those on active promos
+  const filterAccountsOnPromos = async (allAccounts) => {
+    try {
+      const { data: accountPromos, error } = await supabase
+        .from('account_promos')
+        .select('account_id')
+
+      if (error) throw error
+
+      // Get unique account IDs that have promos
+      const accountIdsWithPromos = [...new Set(accountPromos.map(ap => ap.account_id))]
+
+      // Filter accounts to only those with promos
+      const filtered = allAccounts.filter(account => 
+        accountIdsWithPromos.includes(account.id)
+      )
+
+      setAccountsOnPromos(filtered)
+    } catch (error) {
+      console.error('Error filtering accounts:', error)
+      setAccountsOnPromos(allAccounts) // Fallback to showing all
+    }
+  }
+
+  // When account is selected, auto-fill promo
   const handleAccountChange = async (selectedOption) => {
     setSelectedAccount(selectedOption)
     setMessage({ type: '', text: '' })
@@ -102,7 +131,8 @@ const QuickEntry = ({ onSuccess, preSelectedAccount = null }) => {
           promos (
             id,
             promo_name,
-            promo_code
+            promo_code,
+            discount
           )
         `)
         .eq('account_id', selectedOption.value)
@@ -117,7 +147,7 @@ const QuickEntry = ({ onSuccess, preSelectedAccount = null }) => {
         setAccountPromoInfo(accountPromo)
         setSelectedPromo({
           value: accountPromo.promos.id,
-          label: `${accountPromo.promos.promo_name} (${accountPromo.promos.promo_code})`,
+          label: `${accountPromo.promos.promo_name} (${accountPromo.promos.discount}%)`,
           promo: accountPromo.promos
         })
         setMessage({ 
@@ -125,12 +155,12 @@ const QuickEntry = ({ onSuccess, preSelectedAccount = null }) => {
           text: `✓ Auto-filled: This account is on ${accountPromo.promos.promo_name}` 
         })
       } else {
-        // Account not on promo - warn user
+        // This shouldn't happen since we filtered, but just in case
         setAccountPromoInfo(null)
         setSelectedPromo(null)
         setMessage({ 
-          type: 'warning', 
-          text: '⚠️ This account is not assigned to a promo. Please select one or assign the account to a promo first.' 
+          type: 'error', 
+          text: '⚠️ This account is not assigned to a promo. Please assign it first.' 
         })
       }
     } catch (error) {
@@ -201,171 +231,139 @@ const QuickEntry = ({ onSuccess, preSelectedAccount = null }) => {
     }
   }
 
-  const handleAddNewAccount = (newAccount) => {
-    // Refresh accounts list
-    fetchData()
-    
-    // Auto-select the new account
-    setSelectedAccount({
-      value: newAccount.id,
-      label: `${newAccount.account_name} - ${newAccount.territory}`,
-      account: newAccount
-    })
-    
-    // Trigger promo check
-    handleAccountChange({
-      value: newAccount.id,
-      label: `${newAccount.account_name} - ${newAccount.territory}`,
-      account: newAccount
-    })
-  }
-
-  // Custom styles for react-select (dark theme)
-  const selectStyles = {
-    control: (base) => ({
-      ...base,
-      backgroundColor: '#374151',
-      borderColor: '#4B5563',
-      '&:hover': { borderColor: '#6B7280' },
-      boxShadow: 'none',
-      minHeight: '48px',
-    }),
-    menu: (base) => ({
-      ...base,
-      backgroundColor: '#374151',
-      border: '1px solid #4B5563',
-    }),
-    option: (base, state) => ({
-      ...base,
-      backgroundColor: state.isFocused ? '#4B5563' : '#374151',
-      color: '#FFFFFF',
-      '&:hover': { backgroundColor: '#4B5563' },
-    }),
-    singleValue: (base) => ({
-      ...base,
-      color: '#FFFFFF',
-    }),
-    input: (base) => ({
-      ...base,
-      color: '#FFFFFF',
-    }),
-    placeholder: (base) => ({
-      ...base,
-      color: '#9CA3AF',
-    }),
-    noOptionsMessage: (base) => ({
-      ...base,
-      color: '#9CA3AF',
-    }),
-  }
-
-  if (loading) {
-    return (
-      <div className="bg-gray-800 rounded-lg p-6">
-        <div className="text-center py-8">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-          <p className="text-gray-400 mt-2">Loading...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Format accounts for react-select
-  const accountOptions = accounts.map(account => ({
+  // Format accounts for react-select dropdown
+  const accountOptions = accountsOnPromos.map(account => ({
     value: account.id,
     label: `${account.account_name} - ${account.territory}`,
     account: account
   }))
 
-  // Custom NoOptionsMessage with "Add New" button
-  const NoOptionsMessage = (props) => {
-    return (
-      <div className="p-4 text-center">
-        <p className="text-gray-400 mb-3">No accounts found matching "{searchTerm}"</p>
-        <button
-          type="button"
-          onClick={() => setShowAddAccount(true)}
-          className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition flex items-center justify-center space-x-2"
-        >
-          <span className="text-xl">➕</span>
-          <span>Create "{searchTerm}" as new account</span>
-        </button>
-      </div>
-    )
-  }
-
-  // Format promos for react-select
+  // Format promos for react-select dropdown
   const promoOptions = promos.map(promo => ({
     value: promo.id,
     label: `${promo.promo_name} (${promo.promo_code})`,
     promo: promo
   }))
 
+  // Custom styles for react-select (dark theme)
+  const selectStyles = {
+    control: (base) => ({
+      ...base,
+      backgroundColor: 'rgb(55, 65, 81)',
+      borderColor: 'rgb(75, 85, 99)',
+      '&:hover': {
+        borderColor: 'rgb(107, 114, 128)'
+      }
+    }),
+    menu: (base) => ({
+      ...base,
+      backgroundColor: 'rgb(55, 65, 81)',
+      border: '1px solid rgb(75, 85, 99)'
+    }),
+    option: (base, state) => ({
+      ...base,
+      backgroundColor: state.isFocused ? 'rgb(75, 85, 99)' : 'rgb(55, 65, 81)',
+      color: 'white',
+      '&:active': {
+        backgroundColor: 'rgb(107, 114, 128)'
+      }
+    }),
+    singleValue: (base) => ({
+      ...base,
+      color: 'white'
+    }),
+    input: (base) => ({
+      ...base,
+      color: 'white'
+    }),
+    placeholder: (base) => ({
+      ...base,
+      color: 'rgb(156, 163, 175)'
+    })
+  }
+
+  if (loading) {
+    return (
+      <div className="text-center py-8">
+        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        <p className="text-gray-400 mt-2">Loading accounts...</p>
+      </div>
+    )
+  }
+
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
-      <h2 className="text-xl font-semibold text-white mb-4 flex items-center space-x-2">
-        <span className="text-2xl">➕</span>
-        <span>Quick Entry</span>
-      </h2>
-      
-      {/* Message banner */}
+    <div className="space-y-4">
+      {/* Info Message - NEW */}
+      <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+        <div className="flex items-start space-x-2">
+          <span className="text-blue-400 text-lg">ℹ️</span>
+          <div className="flex-1">
+            <p className="text-blue-300 text-sm font-medium">
+              Only accounts on active promos are shown
+            </p>
+            <p className="text-blue-400/70 text-xs mt-1">
+              {accountsOnPromos.length} of {accounts.length} accounts available. To log units for other accounts, assign them to a promo first.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Status Message */}
       {message.text && (
-        <div className={`mb-4 p-4 rounded-lg ${
-          message.type === 'success' ? 'bg-green-500/10 border border-green-500 text-green-500' : 
-          message.type === 'warning' ? 'bg-yellow-500/10 border border-yellow-500 text-yellow-500' :
-          message.type === 'info' ? 'bg-blue-500/10 border border-blue-500 text-blue-500' :
-          'bg-red-500/10 border border-red-500 text-red-500'
+        <div className={`p-4 rounded-lg ${
+          message.type === 'success' ? 'bg-green-500/10 border border-green-500 text-green-400' :
+          message.type === 'error' ? 'bg-red-500/10 border border-red-500 text-red-400' :
+          message.type === 'warning' ? 'bg-yellow-500/10 border border-yellow-500 text-yellow-400' :
+          'bg-blue-500/10 border border-blue-500 text-blue-400'
         }`}>
           {message.text}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Account search dropdown */}
+        {/* Account Selection */}
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Account <span className="text-red-500">*</span>
           </label>
           <Select
+            options={accountOptions}
             value={selectedAccount}
             onChange={handleAccountChange}
-            onInputChange={(value) => setSearchTerm(value)}
-            options={accountOptions}
             styles={selectStyles}
-            placeholder="🔍 Search or create new account..."
-            isSearchable
+            placeholder="Search and select account..."
             isClearable
-            components={{ NoOptionsMessage }}
+            isSearchable
+            noOptionsMessage={() => "No accounts on promos found"}
           />
-          <p className="mt-2 text-xs text-gray-400">
-            💡 Type to search. If not found, you can create it!
-          </p>
+          {accountsOnPromos.length === 0 && (
+            <p className="mt-2 text-sm text-yellow-400">
+              ⚠️ No accounts are assigned to promos yet. Please assign accounts to promos first.
+            </p>
+          )}
         </div>
 
-        {/* Promo dropdown */}
+        {/* Promo Selection (Auto-filled, but can be changed) */}
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Promo <span className="text-red-500">*</span>
           </label>
           <Select
+            options={promoOptions}
             value={selectedPromo}
             onChange={setSelectedPromo}
-            options={promoOptions}
             styles={selectStyles}
-            placeholder="Select a promo..."
-            isSearchable
+            placeholder="Select promo..."
             isClearable
+            isSearchable
             isDisabled={!selectedAccount}
           />
-          
-          {accountPromoInfo && (
-            <p className="mt-2 text-sm text-blue-400">
-              Target: {accountPromoInfo.target_units} units
-            </p>
-          )}
+          <p className="mt-2 text-sm text-gray-400">
+            {selectedAccount ? 'Auto-filled based on account assignment' : 'Select an account first'}
+          </p>
         </div>
 
-        {/* Units input */}
+        {/* Units Input */}
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Units Sold <span className="text-red-500">*</span>
@@ -381,33 +379,35 @@ const QuickEntry = ({ onSuccess, preSelectedAccount = null }) => {
           />
         </div>
 
-        {/* Notes (optional) */}
+        {/* Notes (Optional) */}
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            Notes (optional)
+            Notes <span className="text-gray-500">(Optional)</span>
           </label>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            rows="2"
-            className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Add any notes about this sale..."
+            rows="3"
+            className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            placeholder="Add any notes about this transaction..."
           />
         </div>
 
-        {/* Submit button */}
+        {/* Submit Button */}
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || !selectedAccount || !selectedPromo || !units}
           className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition duration-200 shadow-lg"
         >
           {submitting ? 'Logging...' : 'Log Units'}
         </button>
       </form>
 
-      {/* Help text */}
-      <div className="mt-4 text-sm text-gray-400">
-        <p>💡 Start typing to search accounts. Units are logged with today's date.</p>
+      {/* Helper text */}
+      <div className="text-center pt-4 border-t border-gray-700">
+        <p className="text-sm text-gray-400">
+          💡 Need to add an account to a promo? Go to the account card and click "Assign to Promo"
+        </p>
       </div>
 
       {/* Add Account Modal */}
@@ -415,7 +415,10 @@ const QuickEntry = ({ onSuccess, preSelectedAccount = null }) => {
         <AddAccountModal
           accountName={searchTerm}
           onClose={() => setShowAddAccount(false)}
-          onSuccess={handleAddNewAccount}
+          onSuccess={(newAccount) => {
+            fetchData()
+            setShowAddAccount(false)
+          }}
         />
       )}
     </div>
