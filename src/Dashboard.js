@@ -301,69 +301,71 @@ const Dashboard = () => {
         <StatsHeader />
 
         {/* Quick Actions Bar - Better Hierarchy */}
-        <div className="flex flex-wrap gap-3 mb-6">
-          {/* Primary Action */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6 px-4">
+          {/* Primary Action - Left */}
           <button
             onClick={() => {
               setSelectedAccount(null)
               setSelectedAccountPromo(null)
               setShowQuickEntry(true)
             }}
-            className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-150 flex items-center justify-center space-x-2 shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40 ring-2 ring-blue-600/20"
+            className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-150 flex items-center justify-center space-x-2 shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40 ring-2 ring-blue-600/20"
           >
             <span className="text-lg">➕</span>
             <span>Quick Log Units</span>
             <kbd className="hidden md:inline ml-2 px-1.5 py-0.5 bg-blue-700 rounded text-xs font-mono">N</kbd>
           </button>
           
-          {/* Secondary Actions */}
-          <button
-            onClick={handleRefresh}
-            className="bg-gray-700/80 hover:bg-gray-600 border border-gray-600/50 text-gray-200 font-medium py-3 px-5 rounded-lg transition-all duration-150 flex items-center justify-center space-x-2"
-          >
-            <span className="text-lg">🔄</span>
-            <span>Refresh</span>
-            <kbd className="hidden md:inline ml-2 px-1.5 py-0.5 bg-gray-600 rounded text-xs font-mono">R</kbd>
-          </button>
-
-          {/* Export Dropdown */}
-          <div className="relative group">
-            <button className="bg-emerald-600/90 hover:bg-emerald-700 text-white font-medium py-3 px-5 rounded-lg transition-all duration-150 flex items-center justify-center space-x-2 shadow-md shadow-emerald-600/20 hover:shadow-lg">
-              <span className="text-lg">📥</span>
-              <span>Export</span>
-              <span className="text-xs">▼</span>
+          {/* Utility Actions - Right */}
+          <div className="flex gap-3">
+            <button
+              onClick={handleRefresh}
+              className="bg-gray-700/80 hover:bg-gray-600 border border-gray-600/50 text-gray-200 font-medium py-3 px-5 rounded-lg transition-all duration-150 flex items-center justify-center space-x-2"
+            >
+              <span className="text-lg">🔄</span>
+              <span>Refresh</span>
+              <kbd className="hidden md:inline ml-2 px-1.5 py-0.5 bg-gray-600 rounded text-xs font-mono">R</kbd>
             </button>
-            
-            <div className="absolute right-0 mt-2 w-52 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-30 overflow-hidden">
-              <button
-                onClick={() => exportToCSV('all')}
-                className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
-              >
-                <span>📊</span>
-                <span>All Territories</span>
+
+            {/* Export Dropdown */}
+            <div className="relative group">
+              <button className="bg-emerald-600/90 hover:bg-emerald-700 text-white font-medium py-3 px-5 rounded-lg transition-all duration-150 flex items-center justify-center space-x-2 shadow-md shadow-emerald-600/20 hover:shadow-lg">
+                <span className="text-lg">📥</span>
+                <span>Export</span>
+                <span className="text-xs">▼</span>
               </button>
-              <div className="border-t border-gray-700"></div>
-              <button
-                onClick={() => exportToCSV('Kelowna')}
-                className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
-              >
-                <span>📍</span>
-                <span>Kelowna Only</span>
-              </button>
-              <button
-                onClick={() => exportToCSV('Richmond')}
-                className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
-              >
-                <span>📍</span>
-                <span>Richmond Only</span>
-              </button>
-              <button
-                onClick={() => exportToCSV('Vancouver')}
-                className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
-              >
-                <span>📍</span>
-                <span>Vancouver Only</span>
-              </button>
+              
+              <div className="absolute right-0 mt-2 w-52 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-30 overflow-hidden">
+                <button
+                  onClick={() => exportToCSV('all')}
+                  className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
+                >
+                  <span>📊</span>
+                  <span>All Territories</span>
+                </button>
+                <div className="border-t border-gray-700"></div>
+                <button
+                  onClick={() => exportToCSV('Kelowna')}
+                  className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
+                >
+                  <span>📍</span>
+                  <span>Kelowna Only</span>
+                </button>
+                <button
+                  onClick={() => exportToCSV('Richmond')}
+                  className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
+                >
+                  <span>📍</span>
+                  <span>Richmond Only</span>
+                </button>
+                <button
+                  onClick={() => exportToCSV('Vancouver')}
+                  className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
+                >
+                  <span>📍</span>
+                  <span>Vancouver Only</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
