@@ -28,14 +28,11 @@ const Login = () => {
         return
       }
 
-      // Call signIn - this should handle redirect
-      await signIn(data)
+      // Store user in localStorage and redirect immediately
+      localStorage.setItem('user', JSON.stringify(data))
       
-      // If signIn doesn't redirect after 2 seconds, force it
-      setTimeout(() => {
-        setLoading(false)
-        window.location.href = '/'
-      }, 2000)
+      // Force immediate redirect
+      window.location.href = '/'
 
     } catch (err) {
       console.error('Login error:', err)
