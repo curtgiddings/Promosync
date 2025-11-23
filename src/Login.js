@@ -61,17 +61,14 @@ const Login = () => {
       <div className="relative z-10 w-full max-w-md">
         {/* Branding */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-2xl shadow-blue-500/50 mb-4 transform hover:scale-105 transition-transform">
-            <span className="text-4xl">🕶️</span>
-          </div>
-          <h1 className="text-5xl font-bold text-white mb-2 tracking-tight">
+          <h1 className="text-5xl font-bold text-white mb-3 tracking-tight">
             PromoSync
           </h1>
-          <p className="text-blue-300 text-lg font-medium">
-            Ray-Ban Meta Smart Glasses Sales
+          <p className="text-blue-300 text-xl font-semibold mb-2">
+            Team Synergy Sales Tracker
           </p>
-          <p className="text-gray-400 text-sm mt-1">
-            Track. Analyze. Win.
+          <p className="text-gray-400 text-sm">
+            Stay informed. Stay ahead.
           </p>
         </div>
 
@@ -165,7 +162,7 @@ const Login = () => {
         {/* Footer */}
         <div className="mt-8 text-center">
           <p className="text-gray-500 text-xs">
-            Built for EssilorLuxottica • Ray-Ban Brand Ambassadors
+            Professional sales tracking and analytics
           </p>
         </div>
       </div>
