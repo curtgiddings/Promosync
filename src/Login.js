@@ -7,14 +7,19 @@ const Login = () => {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [debugInfo, setDebugInfo] = useState('')
   const { signIn } = useAuth()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    setDebugInfo('')
     setLoading(true)
 
     try {
+      console.log('🔍 Attempting login with:', { email, password })
+      setDebugInfo(`Searching for email: ${email.trim().toLowerCase()}`)
+
       const { data, error } = await supabase
         .from('reps')
         .select('*')
@@ -22,15 +27,30 @@ const Login = () => {
         .eq('password', password)
         .single()
 
-      if (error || !data) {
+      console.log('📦 Supabase response:', { data, error })
+      
+      if (error) {
+        console.error('❌ Supabase error:', error)
+        setDebugInfo(`Error code: ${error.code} - ${error.message}`)
         setError('Invalid email or password')
         setLoading(false)
         return
       }
 
+      if (!data) {
+        console.error('❌ No data returned')
+        setDebugInfo('No user found with these credentials')
+        setError('Invalid email or password')
+        setLoading(false)
+        return
+      }
+
+      console.log('✅ Login successful, calling signIn()')
+      setDebugInfo('Login successful! Redirecting...')
       signIn(data)
     } catch (err) {
-      console.error('Login error:', err)
+      console.error('💥 Catch block error:', err)
+      setDebugInfo(`Exception: ${err.message}`)
       setError('An error occurred. Please try again.')
       setLoading(false)
     }
@@ -49,6 +69,14 @@ const Login = () => {
 
         <div className="bg-gray-800 rounded-2xl shadow-2xl p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Debug Info */}
+            {debugInfo && (
+              <div className="bg-blue-500/10 border border-blue-500/50 text-blue-400 px-4 py-3 rounded-lg text-sm">
+                🔍 {debugInfo}
+              </div>
+            )}
+
+            {/* Error */}
             {error && (
               <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg">
                 {error}
@@ -68,6 +96,9 @@ const Login = () => {
                 required
                 autoComplete="email"
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Will search for: "{email.trim().toLowerCase()}"
+              </p>
             </div>
 
             <div>
@@ -96,7 +127,7 @@ const Login = () => {
 
           <div className="mt-6 pt-6 border-t border-gray-700">
             <p className="text-center text-gray-400 text-sm">
-              Demo: Create a rep in Supabase to test
+              Debug mode: Check browser console (F12) for details
             </p>
           </div>
         </div>
