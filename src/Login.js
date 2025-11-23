@@ -60,7 +60,7 @@ const Login = () => {
       {/* Content Container */}
       <div className="relative z-10 w-full max-w-md">
         {/* Branding */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-10 mt-8">
           <h1 className="text-5xl font-bold text-white mb-3 tracking-tight">
             PromoSync
           </h1>
