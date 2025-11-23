@@ -2,18 +2,6 @@ import React, { useState } from 'react'
 import { supabase } from './supabaseClient'
 import { useAuth } from './AuthContext'
 
-/**
- * Login Component - Professional Redesign
- * 
- * Features:
- * - Glass morphism card
- * - Animated gradient background
- * - Ray-Ban Meta branding
- * - Better error states
- * - Remember me functionality
- * - Smooth animations
- */
-
 const Login = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -30,7 +18,7 @@ const Login = () => {
       const { data, error } = await supabase
         .from('reps')
         .select('*')
-        .eq('email', email.toLowerCase())
+        .eq('email', email.trim().toLowerCase())
         .eq('password', password)
         .single()
 
@@ -40,7 +28,15 @@ const Login = () => {
         return
       }
 
-      signIn(data)
+      // Call signIn - this should handle redirect
+      await signIn(data)
+      
+      // If signIn doesn't redirect after 2 seconds, force it
+      setTimeout(() => {
+        setLoading(false)
+        window.location.href = '/'
+      }, 2000)
+
     } catch (err) {
       console.error('Login error:', err)
       setError('An error occurred. Please try again.')
@@ -73,7 +69,7 @@ const Login = () => {
         </div>
 
         {/* Glass Card */}
-        <div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl shadow-2xl p-8 transform transition-all hover:shadow-blue-500/10">
+        <div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl shadow-2xl p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Error Message */}
             {error && (
@@ -96,6 +92,7 @@ const Login = () => {
                 placeholder="you@example.com"
                 required
                 autoComplete="email"
+                disabled={loading}
               />
             </div>
 
@@ -112,6 +109,7 @@ const Login = () => {
                 placeholder="••••••••"
                 required
                 autoComplete="current-password"
+                disabled={loading}
               />
             </div>
 
