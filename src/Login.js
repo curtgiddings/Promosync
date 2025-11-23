@@ -1,11 +1,13 @@
 import React, { useState } from 'react'
 import { supabase } from './supabaseClient'
+import { useAuth } from './AuthContext'
 
 const Login = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const { signIn } = useAuth()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -26,11 +28,9 @@ const Login = () => {
         return
       }
 
-      // Store in localStorage
-      localStorage.setItem('user', JSON.stringify(data))
-      
-      // Hard redirect
-      window.location.replace('/')
+      // Use AuthContext signIn - this should update the context state
+      signIn(data)
+      // Don't set loading to false - let the context redirect handle it
 
     } catch (err) {
       console.error('Login error:', err)
@@ -69,6 +69,7 @@ const Login = () => {
                 className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="you@example.com"
                 required
+                autoComplete="email"
               />
             </div>
 
@@ -83,6 +84,7 @@ const Login = () => {
                 className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="••••••••"
                 required
+                autoComplete="current-password"
               />
             </div>
 
@@ -94,6 +96,12 @@ const Login = () => {
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
+
+          <div className="mt-6 pt-6 border-t border-gray-700">
+            <p className="text-center text-gray-400 text-sm">
+              Demo: Create a rep in Supabase to test
+            </p>
+          </div>
         </div>
       </div>
     </div>
