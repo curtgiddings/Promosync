@@ -1,5 +1,4 @@
 import React, { createContext, useState, useContext, useEffect } from 'react'
-import { supabase } from './supabaseClient'
 
 // Create context for auth state
 const AuthContext = createContext()
@@ -23,20 +22,12 @@ export const AuthProvider = ({ children }) => {
     checkUser()
   }, [])
 
-  const checkUser = async () => {
+  const checkUser = () => {
     try {
-      // Get current session from Supabase
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (session?.user) {
-        // Fetch user details from reps table
-        const { data: repData } = await supabase
-          .from('reps')
-          .select('*')
-          .eq('email', session.user.email)
-          .single()
-        
-        setUser(repData)
+      // Check localStorage for existing user
+      const savedUser = localStorage.getItem('user')
+      if (savedUser) {
+        setUser(JSON.parse(savedUser))
       }
     } catch (error) {
       console.error('Error checking user:', error)
@@ -45,32 +36,16 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  const signIn = async (email, password) => {
-    try {
-      // This is a simplified login - we'll use Supabase auth later
-      // For now, just check if user exists in reps table
-      const { data: repData, error } = await supabase
-        .from('reps')
-        .select('*')
-        .eq('email', email)
-        .single()
-
-      if (error || !repData) {
-        throw new Error('Invalid credentials')
-      }
-
-      // In production, you'd verify password hash here
-      // For skeleton, we'll skip password verification
-      setUser(repData)
-      return { success: true }
-    } catch (error) {
-      console.error('Login error:', error)
-      return { success: false, error: error.message }
-    }
+  const signIn = (userData) => {
+    // Accept user data object directly (already validated from Login)
+    setUser(userData)
+    localStorage.setItem('user', JSON.stringify(userData))
+    return { success: true }
   }
 
-  const signOut = async () => {
+  const signOut = () => {
     setUser(null)
+    localStorage.removeItem('user')
   }
 
   const value = {
