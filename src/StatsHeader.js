@@ -93,14 +93,6 @@ const StatsHeader = () => {
       shadow: 'shadow-blue-500/20'
     },
     {
-      icon: '🔥',
-      label: 'This Week',
-      value: stats.weekUnits.toLocaleString(),
-      subtitle: 'last 7 days',
-      gradient: 'from-orange-500/90 to-rose-600/90',
-      shadow: 'shadow-orange-500/20'
-    },
-    {
       icon: '📈',
       label: 'Avg Progress',
       value: `${stats.avgProgress}%`,
@@ -111,6 +103,14 @@ const StatsHeader = () => {
       shadow: stats.avgProgress >= 75 ? 'shadow-emerald-500/20' : 
               stats.avgProgress >= 50 ? 'shadow-amber-500/20' :
               'shadow-slate-500/20'
+    },
+    {
+      icon: '🔥',
+      label: 'This Week',
+      value: stats.weekUnits.toLocaleString(),
+      subtitle: 'last 7 days',
+      gradient: 'from-orange-500/90 to-rose-600/90',
+      shadow: 'shadow-orange-500/20'
     }
   ]
 
