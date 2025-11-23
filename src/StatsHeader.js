@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 
 /**
- * StatsHeader Compact Component
+ * StatsHeader Professional Component
  * 
- * Smaller, less obtrusive version:
- * - Reduced padding
- * - Smaller text
- * - Less vertical space
- * - Still shows key metrics
+ * Refined design:
+ * - Sophisticated color palette (muted tones)
+ * - Better typography and spacing
+ * - Subtle depth with borders
+ * - Compact but elegant
  */
 
 const StatsHeader = () => {
@@ -26,23 +26,18 @@ const StatsHeader = () => {
 
   const fetchStats = async () => {
     try {
-      // Get all account promos for calculations
       const { data: accountPromos } = await supabase
         .from('account_promos')
         .select('account_id, target_units')
 
-      // Calculate total target
       const targetUnits = accountPromos?.reduce((sum, ap) => sum + ap.target_units, 0) || 0
 
-      // Get all transactions
       const { data: allTransactions } = await supabase
         .from('transactions')
         .select('units_sold, transaction_date, account_id')
 
-      // Calculate total units
       const totalUnits = allTransactions?.reduce((sum, t) => sum + t.units_sold, 0) || 0
 
-      // Calculate this week's units (last 7 days)
       const oneWeekAgo = new Date()
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
       const weekStart = oneWeekAgo.toISOString().split('T')[0]
@@ -50,7 +45,6 @@ const StatsHeader = () => {
       const weekTransactions = allTransactions?.filter(t => t.transaction_date >= weekStart) || []
       const weekUnits = weekTransactions.reduce((sum, t) => sum + t.units_sold, 0)
 
-      // Calculate average progress per account
       let totalProgress = 0
       if (accountPromos && allTransactions) {
         accountPromos.forEach(ap => {
@@ -79,10 +73,10 @@ const StatsHeader = () => {
 
   if (loading) {
     return (
-      <div className="bg-gray-800 rounded-lg p-3 mb-4">
-        <div className="grid grid-cols-3 gap-3 animate-pulse">
+      <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-4 mb-6">
+        <div className="grid grid-cols-3 gap-4 animate-pulse">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-16 bg-gray-700 rounded"></div>
+            <div key={i} className="h-20 bg-gray-700/50 rounded-lg"></div>
           ))}
         </div>
       </div>
@@ -95,38 +89,45 @@ const StatsHeader = () => {
       label: 'Total Units',
       value: stats.totalUnits.toLocaleString(),
       subtitle: `of ${stats.targetUnits.toLocaleString()}`,
-      color: 'from-blue-500 to-blue-600'
+      gradient: 'from-blue-500/90 to-indigo-600/90',
+      shadow: 'shadow-blue-500/20'
     },
     {
       icon: '🔥',
       label: 'This Week',
       value: stats.weekUnits.toLocaleString(),
       subtitle: 'last 7 days',
-      color: 'from-orange-500 to-red-600'
+      gradient: 'from-orange-500/90 to-rose-600/90',
+      shadow: 'shadow-orange-500/20'
     },
     {
       icon: '📈',
       label: 'Avg Progress',
       value: `${stats.avgProgress}%`,
       subtitle: 'per account',
-      color: stats.avgProgress >= 75 ? 'from-green-500 to-green-600' : 
-             stats.avgProgress >= 50 ? 'from-yellow-500 to-yellow-600' :
-             'from-purple-500 to-purple-600'
+      gradient: stats.avgProgress >= 75 ? 'from-emerald-500/90 to-green-600/90' : 
+                stats.avgProgress >= 50 ? 'from-amber-500/90 to-yellow-600/90' :
+                'from-slate-500/90 to-slate-600/90',
+      shadow: stats.avgProgress >= 75 ? 'shadow-emerald-500/20' : 
+              stats.avgProgress >= 50 ? 'shadow-amber-500/20' :
+              'shadow-slate-500/20'
     }
   ]
 
   return (
-    <div className="bg-gray-800 rounded-lg p-3 mb-4 shadow-lg">
-      <div className="flex items-center justify-between mb-2">
-        <h2 className="text-sm font-semibold text-gray-300 flex items-center space-x-1">
-          <span>📊</span>
-          <span>Team Stats</span>
+    <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-4 mb-6 shadow-lg">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-gray-300 flex items-center space-x-2">
+          <span className="text-base">📊</span>
+          <span>Team Performance</span>
         </h2>
         <button
           onClick={fetchStats}
-          className="text-xs text-gray-500 hover:text-white transition flex items-center space-x-1"
+          className="text-xs text-gray-500 hover:text-gray-300 transition-colors flex items-center space-x-1 px-2 py-1 rounded hover:bg-gray-700/50"
+          title="Refresh stats"
         >
-          <span>🔄</span>
+          <span className="text-sm">🔄</span>
+          <span>Refresh</span>
         </button>
       </div>
 
@@ -134,15 +135,15 @@ const StatsHeader = () => {
         {statCards.map((stat, index) => (
           <div
             key={index}
-            className={`bg-gradient-to-br ${stat.color} rounded-lg p-3 shadow-md`}
+            className={`bg-gradient-to-br ${stat.gradient} backdrop-blur-sm rounded-lg p-4 ${stat.shadow} shadow-lg border border-white/10 transition-all duration-200 hover:scale-[1.02] hover:shadow-xl`}
           >
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xl">{stat.icon}</span>
-              <span className="text-xs text-white/80">{stat.label}</span>
+            <div className="flex items-start justify-between mb-2">
+              <span className="text-2xl opacity-90">{stat.icon}</span>
+              <span className="text-xs font-medium text-white/70 uppercase tracking-wide">{stat.label}</span>
             </div>
             <div className="text-white">
-              <p className="text-2xl font-bold">{stat.value}</p>
-              <p className="text-xs opacity-75">{stat.subtitle}</p>
+              <p className="text-2xl font-semibold tabular-nums mb-0.5">{stat.value}</p>
+              <p className="text-xs text-white/60 font-normal">{stat.subtitle}</p>
             </div>
           </div>
         ))}
