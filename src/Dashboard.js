@@ -3,6 +3,7 @@ import { useAuth } from './AuthContext'
 import { supabase } from './supabaseClient'
 import StatsHeader from './StatsHeader'
 import ProgressCard from './ProgressCard'
+import AccountListView from './AccountListView'
 import AssignPromo from './AssignPromo'
 import QuickEntry from './QuickEntry'
 import Toast from './Toast'
@@ -12,8 +13,12 @@ const Dashboard = () => {
   
   // Data
   const [accounts, setAccounts] = useState([])
+  const [accountsWithPromos, setAccountsWithPromos] = useState([]) // NEW: Only accounts on promos
   const [accountProgress, setAccountProgress] = useState({})
   const [loading, setLoading] = useState(true)
+  
+  // View toggle
+  const [viewMode, setViewMode] = useState('list') // 'list' or 'card'
   
   // Search and filters
   const [searchTerm, setSearchTerm] = useState('')
@@ -32,16 +37,13 @@ const Dashboard = () => {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyPress = (e) => {
-      // Don't trigger if typing in input
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
       
-      // "/" - Focus search
       if (e.key === '/') {
         e.preventDefault()
         document.querySelector('input[type="text"]')?.focus()
       }
       
-      // "n" - Quick log units
       if (e.key === 'n' || e.key === 'N') {
         e.preventDefault()
         setSelectedAccount(null)
@@ -49,14 +51,12 @@ const Dashboard = () => {
         setShowQuickEntry(true)
       }
       
-      // "r" - Refresh
       if (e.key === 'r' || e.key === 'R') {
         e.preventDefault()
         fetchAccounts()
         showToast('Refreshed!', 'success')
       }
       
-      // "Escape" - Close modals
       if (e.key === 'Escape') {
         setShowQuickEntry(false)
         setShowAssignPromo(false)
@@ -73,15 +73,52 @@ const Dashboard = () => {
 
   const fetchAccounts = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch accounts with promo data attached
+      const { data: accountPromos, error: promoError } = await supabase
+        .from('account_promos')
+        .select(`
+          account_id,
+          target_units,
+          terms,
+          promos (
+            id,
+            promo_name,
+            promo_code,
+            discount
+          )
+        `)
+
+      if (promoError) throw promoError
+
+      // Get account IDs that have promos
+      const accountIdsWithPromos = accountPromos.map(ap => ap.account_id)
+
+      // Fetch only accounts that are on promos
+      const { data: accountsData, error: accountsError } = await supabase
         .from('accounts')
         .select('*')
+        .in('id', accountIdsWithPromos)
         .order('account_name')
 
-      if (error) throw error
-      setAccounts(data || [])
-      
-      await calculateAllProgress(data || [])
+      if (accountsError) throw accountsError
+
+      // Attach promo data to accounts
+      const enrichedAccounts = accountsData.map(account => {
+        const accountPromo = accountPromos.find(ap => ap.account_id === account.id)
+        return {
+          ...account,
+          promo_name: accountPromo?.promos?.promo_name,
+          discount: accountPromo?.promos?.discount,
+          terms: accountPromo?.terms,
+          target_units: accountPromo?.target_units,
+          promo_id: accountPromo?.promos?.id,
+          promoData: accountPromo
+        }
+      })
+
+      setAccountsWithPromos(enrichedAccounts)
+      await calculateAllProgress(enrichedAccounts)
+
     } catch (error) {
       console.error('Error fetching accounts:', error)
       showToast('Failed to load accounts', 'error')
@@ -95,37 +132,32 @@ const Dashboard = () => {
     
     for (const account of accountsList) {
       try {
-        const { data: accountPromo } = await supabase
-          .from('account_promos')
-          .select('target_units, promo_id')
-          .eq('account_id', account.id)
-          .order('assigned_date', { ascending: false })
-          .limit(1)
-          .single()
-
-        if (accountPromo) {
-          const { data: transactions } = await supabase
-            .from('transactions')
-            .select('units_sold')
-            .eq('account_id', account.id)
-            .eq('promo_id', accountPromo.promo_id)
-
-          const totalUnits = transactions?.reduce((sum, t) => sum + t.units_sold, 0) || 0
-          const progress = Math.round((totalUnits / accountPromo.target_units) * 100)
-          
-          progressMap[account.id] = progress
-        } else {
-          progressMap[account.id] = -1
+        if (!account.promo_id) {
+          progressMap[account.id] = 0
+          continue
         }
+
+        const { data: transactions } = await supabase
+          .from('transactions')
+          .select('units_sold')
+          .eq('account_id', account.id)
+          .eq('promo_id', account.promo_id)
+
+        const totalUnits = transactions?.reduce((sum, t) => sum + t.units_sold, 0) || 0
+        const progress = account.target_units ? Math.round((totalUnits / account.target_units) * 100) : 0
+        
+        progressMap[account.id] = progress
+        
+        // Store units_sold in account for list view
+        account.units_sold = totalUnits
       } catch (error) {
-        progressMap[account.id] = -1
+        progressMap[account.id] = 0
       }
     }
     
     setAccountProgress(progressMap)
   }
 
-  // Toast notification system
   const showToast = (message, type = 'success') => {
     const id = Date.now()
     setToasts(prev => [...prev, { id, message, type }])
@@ -135,9 +167,9 @@ const Dashboard = () => {
     setToasts(prev => prev.filter(t => t.id !== id))
   }
 
-  const territories = ['all', ...new Set(accounts.map(a => a.territory).filter(Boolean))]
+  const territories = ['all', ...new Set(accountsWithPromos.map(a => a.territory).filter(Boolean))]
 
-  const filteredAccounts = accounts.filter(account => {
+  const filteredAccounts = accountsWithPromos.filter(account => {
     const matchesSearch = 
       account.account_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       account.territory?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -162,48 +194,20 @@ const Dashboard = () => {
   const exportToCSV = async (territory = 'all') => {
     try {
       const accountsToExport = territory === 'all' 
-        ? accounts 
-        : accounts.filter(a => a.territory === territory)
+        ? accountsWithPromos 
+        : accountsWithPromos.filter(a => a.territory === territory)
 
-      const exportData = []
-
-      for (const account of accountsToExport) {
-        const { data: accountPromo } = await supabase
-          .from('account_promos')
-          .select(`
-            target_units,
-            terms,
-            promos (promo_name, discount)
-          `)
-          .eq('account_id', account.id)
-          .order('assigned_date', { ascending: false })
-          .limit(1)
-          .single()
-
-        let totalUnits = 0
-        let progress = 0
-        if (accountPromo) {
-          const { data: transactions } = await supabase
-            .from('transactions')
-            .select('units_sold')
-            .eq('account_id', account.id)
-
-          totalUnits = transactions?.reduce((sum, t) => sum + t.units_sold, 0) || 0
-          progress = Math.round((totalUnits / accountPromo.target_units) * 100)
-        }
-
-        exportData.push({
-          'Account Name': account.account_name,
-          'Territory': account.territory,
-          'Promo': accountPromo ? accountPromo.promos.promo_name : 'Not Assigned',
-          'Discount': accountPromo ? `${accountPromo.promos.discount}%` : 'N/A',
-          'Terms': accountPromo?.terms || 'N/A',
-          'Target': accountPromo?.target_units || 0,
-          'Units Sold': totalUnits,
-          'Progress': `${progress}%`,
-          'Status': progress >= 100 ? 'Met' : progress >= 75 ? 'On Track' : progress >= 0 ? 'Behind' : 'No Promo'
-        })
-      }
+      const exportData = accountsToExport.map(account => ({
+        'Account Name': account.account_name,
+        'Territory': account.territory,
+        'Promo': account.promo_name || 'Not Assigned',
+        'Discount': account.discount ? `${account.discount}%` : 'N/A',
+        'Terms': account.terms || 'N/A',
+        'Target': account.target_units || 0,
+        'Units Sold': account.units_sold || 0,
+        'Progress': `${accountProgress[account.id] || 0}%`,
+        'Status': accountProgress[account.id] >= 100 ? 'Met' : accountProgress[account.id] >= 75 ? 'On Track' : 'Behind'
+      }))
 
       const headers = Object.keys(exportData[0])
       const csvContent = [
@@ -300,9 +304,8 @@ const Dashboard = () => {
         {/* Stats Dashboard */}
         <StatsHeader />
 
-        {/* Quick Actions Bar - Better Hierarchy */}
+        {/* Quick Actions Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6 px-4">
-          {/* Primary Action - Left */}
           <button
             onClick={() => {
               setSelectedAccount(null)
@@ -316,7 +319,6 @@ const Dashboard = () => {
             <kbd className="hidden md:inline ml-2 px-1.5 py-0.5 bg-blue-700 rounded text-xs font-mono">N</kbd>
           </button>
           
-          {/* Utility Actions - Right */}
           <div className="flex gap-3">
             <button
               onClick={handleRefresh}
@@ -370,7 +372,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Search and Filters */}
+        {/* Search, Filters, and View Toggle */}
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-5 mb-6 shadow-lg">
           <div className="flex flex-col lg:flex-row gap-4 mb-4">
             {/* Search Bar */}
@@ -383,7 +385,7 @@ const Dashboard = () => {
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search accounts by name or territory..."
+                  placeholder="Search accounts..."
                   className="w-full pl-12 pr-12 py-3 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all"
                 />
                 {searchTerm && (
@@ -410,6 +412,32 @@ const Dashboard = () => {
                   </option>
                 ))}
               </select>
+            </div>
+
+            {/* View Toggle */}
+            <div className="flex bg-gray-700/50 rounded-lg p-1 border border-gray-600/50">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`px-4 py-2 rounded-md font-medium transition flex items-center space-x-2 ${
+                  viewMode === 'list'
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <span>☰</span>
+                <span className="hidden sm:inline">List</span>
+              </button>
+              <button
+                onClick={() => setViewMode('card')}
+                className={`px-4 py-2 rounded-md font-medium transition flex items-center space-x-2 ${
+                  viewMode === 'card'
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <span>▦</span>
+                <span className="hidden sm:inline">Cards</span>
+              </button>
             </div>
           </div>
 
@@ -463,8 +491,7 @@ const Dashboard = () => {
           {/* Results count */}
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-400">
-              Showing <span className="font-semibold text-white">{filteredAccounts.length}</span> of{' '}
-              <span className="font-semibold text-white">{accounts.length}</span> accounts
+              Showing <span className="font-semibold text-white">{filteredAccounts.length}</span> accounts on promos
             </span>
             {(searchTerm || territoryFilter !== 'all' || statusFilter !== 'all') && (
               <button
@@ -482,7 +509,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Accounts Grid */}
+        {/* Accounts Display - List or Card View */}
         {loading ? (
           <div className="text-center py-16">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-4 border-blue-500"></div>
@@ -494,26 +521,19 @@ const Dashboard = () => {
             <p className="text-gray-400 text-lg mb-2 font-medium">
               {searchTerm || territoryFilter !== 'all' || statusFilter !== 'all'
                 ? 'No accounts match your filters' 
-                : 'No accounts yet'}
+                : 'No accounts on promos yet'}
             </p>
             <p className="text-gray-500 text-sm mb-4">
-              {searchTerm || territoryFilter !== 'all' || statusFilter !== 'all'
-                ? 'Try adjusting your search or filter criteria' 
-                : 'Add some accounts to get started'}
+              Assign accounts to promos to see them here
             </p>
-            {(searchTerm || territoryFilter !== 'all' || statusFilter !== 'all') && (
-              <button
-                onClick={() => {
-                  setSearchTerm('')
-                  setTerritoryFilter('all')
-                  setStatusFilter('all')
-                }}
-                className="mt-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium"
-              >
-                Clear all filters
-              </button>
-            )}
           </div>
+        ) : viewMode === 'list' ? (
+          <AccountListView
+            accounts={filteredAccounts}
+            accountProgress={accountProgress}
+            onAssignPromo={handleAssignPromo}
+            onQuickLog={handleQuickLog}
+          />
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {filteredAccounts.map((account) => (
