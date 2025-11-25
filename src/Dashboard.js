@@ -7,6 +7,7 @@ import AccountListView from './AccountListView'
 import AssignPromo from './AssignPromo'
 import QuickEntry from './QuickEntry'
 import AddAccountToPromo from './AddAccountToPromo'
+import AddAccountModal from './AddAccountModal'
 import Toast from './Toast'
 
 const Dashboard = () => {
@@ -30,6 +31,8 @@ const Dashboard = () => {
   const [showQuickEntry, setShowQuickEntry] = useState(false)
   const [showAssignPromo, setShowAssignPromo] = useState(false)
   const [showAddToPromo, setShowAddToPromo] = useState(false)
+  const [showAddAccount, setShowAddAccount] = useState(false)
+  const [newAccountName, setNewAccountName] = useState('')
   const [selectedAccount, setSelectedAccount] = useState(null)
   const [selectedAccountPromo, setSelectedAccountPromo] = useState(null)
   
@@ -309,25 +312,24 @@ const Dashboard = () => {
         {/* Quick Actions Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6 px-4">
           <div className="flex gap-3">
-            {/* Add to Promo Button - LEFT */}
+            {/* Add to Promo Button - SECONDARY (Outlined) */}
             <button
               onClick={() => setShowAddToPromo(true)}
-              className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-150 flex items-center justify-center space-x-2 shadow-lg shadow-emerald-600/30 hover:shadow-xl hover:shadow-emerald-600/40"
+              className="bg-transparent hover:bg-gray-700/50 border-2 border-gray-600 hover:border-gray-500 text-gray-200 hover:text-white font-medium py-3 px-6 rounded-lg transition-all duration-150 flex items-center justify-center space-x-2"
             >
               <span className="text-lg">➕</span>
               <span>Add to Promo</span>
             </button>
 
-            {/* Quick Log Units Button */}
+            {/* Quick Log Units Button - PRIMARY (Hero) */}
             <button
               onClick={() => {
                 setSelectedAccount(null)
                 setSelectedAccountPromo(null)
                 setShowQuickEntry(true)
               }}
-              className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-150 flex items-center justify-center space-x-2 shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40 ring-2 ring-blue-600/20"
+              className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold py-3 px-6 rounded-lg transition-all duration-150 flex items-center justify-center space-x-2 shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40 ring-2 ring-blue-600/20"
             >
-              <span className="text-lg">📝</span>
               <span>Quick Log Units</span>
               <kbd className="hidden md:inline ml-2 px-1.5 py-0.5 bg-blue-700 rounded text-xs font-mono">N</kbd>
             </button>
@@ -614,6 +616,33 @@ const Dashboard = () => {
             setSelectedAccount(account)
             setSelectedAccountPromo(promoData)
             setShowAssignPromo(true)
+          }}
+          onAddNew={(accountName) => {
+            setNewAccountName(accountName)
+            setShowAddAccount(true)
+          }}
+        />
+      )}
+
+      {/* Add Account Modal */}
+      {showAddAccount && (
+        <AddAccountModal
+          accountName={newAccountName}
+          onClose={() => {
+            setShowAddAccount(false)
+            setNewAccountName('')
+          }}
+          onSuccess={(newAccount) => {
+            setShowAddAccount(false)
+            setNewAccountName('')
+            fetchAccounts()
+            showToast('Account added successfully!', 'success')
+            // Auto-open assign promo for new account
+            setTimeout(() => {
+              setSelectedAccount(newAccount)
+              setSelectedAccountPromo(null)
+              setShowAssignPromo(true)
+            }, 500)
           }}
         />
       )}
