@@ -6,6 +6,7 @@ import ProgressCard from './ProgressCard'
 import AccountListView from './AccountListView'
 import AssignPromo from './AssignPromo'
 import QuickEntry from './QuickEntry'
+import AddAccountToPromo from './AddAccountToPromo'
 import Toast from './Toast'
 
 const Dashboard = () => {
@@ -28,6 +29,7 @@ const Dashboard = () => {
   // Modals
   const [showQuickEntry, setShowQuickEntry] = useState(false)
   const [showAssignPromo, setShowAssignPromo] = useState(false)
+  const [showAddToPromo, setShowAddToPromo] = useState(false)
   const [selectedAccount, setSelectedAccount] = useState(null)
   const [selectedAccountPromo, setSelectedAccountPromo] = useState(null)
   
@@ -306,20 +308,32 @@ const Dashboard = () => {
 
         {/* Quick Actions Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6 px-4">
-          <button
-            onClick={() => {
-              setSelectedAccount(null)
-              setSelectedAccountPromo(null)
-              setShowQuickEntry(true)
-            }}
-            className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-150 flex items-center justify-center space-x-2 shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40 ring-2 ring-blue-600/20"
-          >
-            <span className="text-lg">➕</span>
-            <span>Quick Log Units</span>
-            <kbd className="hidden md:inline ml-2 px-1.5 py-0.5 bg-blue-700 rounded text-xs font-mono">N</kbd>
-          </button>
-          
           <div className="flex gap-3">
+            {/* Add to Promo Button - LEFT */}
+            <button
+              onClick={() => setShowAddToPromo(true)}
+              className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-150 flex items-center justify-center space-x-2 shadow-lg shadow-emerald-600/30 hover:shadow-xl hover:shadow-emerald-600/40"
+            >
+              <span className="text-lg">➕</span>
+              <span>Add to Promo</span>
+            </button>
+
+            {/* Quick Log Units Button */}
+            <button
+              onClick={() => {
+                setSelectedAccount(null)
+                setSelectedAccountPromo(null)
+                setShowQuickEntry(true)
+              }}
+              className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-150 flex items-center justify-center space-x-2 shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40 ring-2 ring-blue-600/20"
+            >
+              <span className="text-lg">📝</span>
+              <span>Quick Log Units</span>
+              <kbd className="hidden md:inline ml-2 px-1.5 py-0.5 bg-blue-700 rounded text-xs font-mono">N</kbd>
+            </button>
+          </div>
+          
+          <div className="flex gap-3">{/* Utility Actions - Right */}
             <button
               onClick={handleRefresh}
               className="bg-gray-700/80 hover:bg-gray-600 border border-gray-600/50 text-gray-200 font-medium py-3 px-5 rounded-lg transition-all duration-150 flex items-center justify-center space-x-2"
@@ -588,6 +602,18 @@ const Dashboard = () => {
           onSuccess={() => {
             handleRefresh()
             showToast('Promo assigned successfully!', 'success')
+          }}
+        />
+      )}
+
+      {/* Add Account to Promo Modal */}
+      {showAddToPromo && (
+        <AddAccountToPromo
+          onClose={() => setShowAddToPromo(false)}
+          onAssign={(account, promoData) => {
+            setSelectedAccount(account)
+            setSelectedAccountPromo(promoData)
+            setShowAssignPromo(true)
           }}
         />
       )}
