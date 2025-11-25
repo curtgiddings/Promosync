@@ -309,45 +309,45 @@ const Dashboard = () => {
         {/* Stats Dashboard */}
         <StatsHeader />
 
-        {/* Quick Actions Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-6 px-4">
-          <div className="flex gap-3">
-            {/* Add to Promo Button - SECONDARY (Outlined) */}
+        {/* Quick Actions Bar - Mobile Responsive */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 px-2 sm:px-4">
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            {/* Add to Promo Button - SECONDARY (Outlined) - Touch Friendly */}
             <button
               onClick={() => setShowAddToPromo(true)}
-              className="bg-transparent hover:bg-gray-700/50 border-2 border-gray-600 hover:border-gray-500 text-gray-200 hover:text-white font-medium py-3 px-6 rounded-lg transition-all duration-150 flex items-center justify-center space-x-2"
+              className="bg-transparent hover:bg-gray-700/50 border-2 border-gray-600 hover:border-gray-500 text-gray-200 hover:text-white font-medium py-3 px-6 rounded-lg transition-all duration-150 flex items-center justify-center space-x-2 min-h-[44px]"
             >
               <span className="text-lg">➕</span>
               <span>Add to Promo</span>
             </button>
 
-            {/* Quick Log Units Button - PRIMARY (Hero) */}
+            {/* Quick Log Units Button - PRIMARY (Hero) - Touch Friendly */}
             <button
               onClick={() => {
                 setSelectedAccount(null)
                 setSelectedAccountPromo(null)
                 setShowQuickEntry(true)
               }}
-              className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold py-3 px-6 rounded-lg transition-all duration-150 flex items-center justify-center space-x-2 shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40 ring-2 ring-blue-600/20"
+              className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold py-3 px-6 rounded-lg transition-all duration-150 flex items-center justify-center space-x-2 shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40 ring-2 ring-blue-600/20 min-h-[44px]"
             >
               <span>Quick Log Units</span>
-              <kbd className="hidden md:inline ml-2 px-1.5 py-0.5 bg-blue-700 rounded text-xs font-mono">N</kbd>
+              <kbd className="hidden lg:inline ml-2 px-1.5 py-0.5 bg-blue-700 rounded text-xs font-mono">N</kbd>
             </button>
           </div>
           
-          <div className="flex gap-3">{/* Utility Actions - Right */}
+          <div className="flex gap-3 w-full sm:w-auto">{/* Utility Actions - Touch Friendly */}
             <button
               onClick={handleRefresh}
-              className="bg-gray-700/80 hover:bg-gray-600 border border-gray-600/50 text-gray-200 font-medium py-3 px-5 rounded-lg transition-all duration-150 flex items-center justify-center space-x-2"
+              className="flex-1 sm:flex-none bg-gray-700/80 hover:bg-gray-600 border border-gray-600/50 text-gray-200 font-medium py-3 px-5 rounded-lg transition-all duration-150 flex items-center justify-center space-x-2 min-h-[44px]"
             >
               <span className="text-lg">🔄</span>
               <span>Refresh</span>
-              <kbd className="hidden md:inline ml-2 px-1.5 py-0.5 bg-gray-600 rounded text-xs font-mono">R</kbd>
+              <kbd className="hidden lg:inline ml-2 px-1.5 py-0.5 bg-gray-600 rounded text-xs font-mono">R</kbd>
             </button>
 
-            {/* Export Dropdown */}
-            <div className="relative group">
-              <button className="bg-emerald-600/90 hover:bg-emerald-700 text-white font-medium py-3 px-5 rounded-lg transition-all duration-150 flex items-center justify-center space-x-2 shadow-md shadow-emerald-600/20 hover:shadow-lg">
+            {/* Export Dropdown - Mobile Friendly */}
+            <div className="relative group flex-1 sm:flex-none">
+              <button className="w-full bg-emerald-600/90 hover:bg-emerald-700 text-white font-medium py-3 px-5 rounded-lg transition-all duration-150 flex items-center justify-center space-x-2 shadow-md shadow-emerald-600/20 hover:shadow-lg min-h-[44px]">
                 <span className="text-lg">📥</span>
                 <span>Export</span>
                 <span className="text-xs">▼</span>
@@ -356,7 +356,7 @@ const Dashboard = () => {
               <div className="absolute right-0 mt-2 w-52 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-30 overflow-hidden">
                 <button
                   onClick={() => exportToCSV('all')}
-                  className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
+                  className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center space-x-2 min-h-[44px]"
                 >
                   <span>📊</span>
                   <span>All Territories</span>
@@ -364,21 +364,21 @@ const Dashboard = () => {
                 <div className="border-t border-gray-700"></div>
                 <button
                   onClick={() => exportToCSV('Kelowna')}
-                  className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
+                  className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center space-x-2 min-h-[44px]"
                 >
                   <span>📍</span>
                   <span>Kelowna Only</span>
                 </button>
                 <button
                   onClick={() => exportToCSV('Richmond')}
-                  className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
+                  className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center space-x-2 min-h-[44px]"
                 >
                   <span>📍</span>
                   <span>Richmond Only</span>
                 </button>
                 <button
                   onClick={() => exportToCSV('Vancouver')}
-                  className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
+                  className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center space-x-2 min-h-[44px]"
                 >
                   <span>📍</span>
                   <span>Vancouver Only</span>
@@ -567,14 +567,14 @@ const Dashboard = () => {
 
       {/* Modals */}
       {showQuickEntry && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-gray-900 rounded-xl max-w-2xl w-full my-8 shadow-2xl border border-gray-700/50">
-            <div className="p-6">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 md:p-4 overflow-y-auto">
+          <div className="bg-gray-900 md:rounded-xl w-full md:max-w-2xl min-h-screen md:min-h-0 md:my-8 shadow-2xl border-0 md:border border-gray-700/50">
+            <div className="p-4 md:p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-semibold text-white">Quick Log Units</h2>
+                <h2 className="text-xl md:text-2xl font-semibold text-white">Quick Log Units</h2>
                 <button
                   onClick={() => setShowQuickEntry(false)}
-                  className="text-gray-400 hover:text-white transition text-2xl w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-800"
+                  className="text-gray-400 hover:text-white transition text-2xl w-11 h-11 flex items-center justify-center rounded-lg hover:bg-gray-800 min-h-[44px] min-w-[44px]"
                 >
                   ✕
                 </button>
