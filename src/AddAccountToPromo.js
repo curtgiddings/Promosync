@@ -9,7 +9,7 @@ import { supabase } from './supabaseClient'
  * Quick assign workflow
  */
 
-const AddAccountToPromo = ({ onClose, onAssign }) => {
+const AddAccountToPromo = ({ onClose, onAssign, onAddNew }) => {
   const [searchTerm, setSearchTerm] = useState('')
   const [allAccounts, setAllAccounts] = useState([])
   const [accountPromoStatus, setAccountPromoStatus] = useState({})
@@ -142,8 +142,20 @@ const AddAccountToPromo = ({ onClose, onAssign }) => {
           ) : filteredAccounts.length === 0 ? (
             <div className="text-center py-12">
               <span className="text-4xl block mb-3">🔍</span>
-              <p className="text-gray-400">No accounts found</p>
-              <p className="text-gray-500 text-sm mt-1">Try a different search term</p>
+              <p className="text-gray-400 mb-2">No accounts found for "{searchTerm}"</p>
+              <p className="text-gray-500 text-sm mb-6">The account might not exist yet</p>
+              {onAddNew && (
+                <button
+                  onClick={() => {
+                    onClose()
+                    onAddNew(searchTerm)
+                  }}
+                  className="inline-flex items-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all shadow-lg"
+                >
+                  <span className="text-lg">➕</span>
+                  <span>Add New Account "{searchTerm}"</span>
+                </button>
+              )}
             </div>
           ) : (
             <div className="space-y-2">
