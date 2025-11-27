@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
+import { useAuth } from './AuthContext'
 
 /**
  * AssignPromo Modal
@@ -12,6 +13,7 @@ import { supabase } from './supabaseClient'
  */
 
 const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
+  const { user } = useAuth()
   const [promos, setPromos] = useState([])
   const [selectedPromo, setSelectedPromo] = useState('')
   const [targetUnits, setTargetUnits] = useState('')
@@ -142,7 +144,7 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
           .insert({
             action_type: currentPromo ? 'promo_changed' : 'promo_assigned',
             account_id: account.id,
-            rep_id: null, // Could add user.id if available
+            rep_id: user?.id,
             details: { 
               promo_name: promos.find(p => p.id === selectedPromo)?.promo_name,
               target_units: parseInt(targetUnits)
