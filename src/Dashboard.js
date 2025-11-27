@@ -78,13 +78,15 @@ const Dashboard = () => {
 
   const fetchAccounts = async () => {
     try {
-      // Fetch accounts with promo data attached
+      // Fetch accounts with promo data attached - order by assigned_date to get most recent
       const { data: accountPromos, error: promoError } = await supabase
         .from('account_promos')
         .select(`
           account_id,
           target_units,
           terms,
+          assigned_date,
+          promo_id,
           promos (
             id,
             promo_name,
@@ -92,11 +94,28 @@ const Dashboard = () => {
             discount
           )
         `)
+        .order('assigned_date', { ascending: false })
 
       if (promoError) throw promoError
 
+      // Group by account_id and keep only the most recent promo for each account
+      const latestPromosByAccount = {}
+      accountPromos.forEach(ap => {
+        if (!latestPromosByAccount[ap.account_id]) {
+          latestPromosByAccount[ap.account_id] = ap
+        }
+        // Since we ordered by assigned_date DESC, the first one we see is the most recent
+      })
+
       // Get account IDs that have promos
-      const accountIdsWithPromos = accountPromos.map(ap => ap.account_id)
+      const accountIdsWithPromos = Object.keys(latestPromosByAccount)
+
+      if (accountIdsWithPromos.length === 0) {
+        setAccountsWithPromos([])
+        setAccountProgress({})
+        setLoading(false)
+        return
+      }
 
       // Fetch only accounts that are on promos
       const { data: accountsData, error: accountsError } = await supabase
@@ -107,16 +126,16 @@ const Dashboard = () => {
 
       if (accountsError) throw accountsError
 
-      // Attach promo data to accounts
+      // Attach promo data to accounts (using most recent promo)
       const enrichedAccounts = accountsData.map(account => {
-        const accountPromo = accountPromos.find(ap => ap.account_id === account.id)
+        const accountPromo = latestPromosByAccount[account.id]
         return {
           ...account,
           promo_name: accountPromo?.promos?.promo_name,
           discount: accountPromo?.promos?.discount,
           terms: accountPromo?.terms,
           target_units: accountPromo?.target_units,
-          promo_id: accountPromo?.promos?.id,
+          promo_id: accountPromo?.promos?.id || accountPromo?.promo_id,
           promoData: accountPromo
         }
       })
