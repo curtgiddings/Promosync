@@ -200,6 +200,24 @@ const QuickEntry = ({ onSuccess, preSelectedAccount = null }) => {
 
       if (error) throw error
 
+      // Log activity
+      try {
+        await supabase
+          .from('activity_log')
+          .insert({
+            action_type: 'units_logged',
+            account_id: selectedAccount.value,
+            rep_id: user.id,
+            details: { 
+              units: parseInt(units),
+              promo_name: selectedPromo.label,
+              account_name: selectedAccount.label
+            }
+          })
+      } catch (e) {
+        // Activity logging is optional, don't block on failure
+      }
+
       // Success!
       setMessage({ 
         type: 'success', 
