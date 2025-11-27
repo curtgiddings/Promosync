@@ -4,14 +4,15 @@ import React from 'react'
  * AccountListView - Mobile Optimized
  * 
  * Desktop: Full table view
- * Mobile: Horizontal scroll OR stacked cards
+ * Mobile: Card-based layout
  */
 
 const AccountListView = ({ 
   accounts, 
   accountProgress, 
   onAssignPromo, 
-  onQuickLog 
+  onQuickLog,
+  onViewNotes
 }) => {
 
   const getStatusColor = (progress) => {
@@ -138,6 +139,13 @@ const AccountListView = ({
                       Log
                     </button>
                     <button
+                      onClick={() => onViewNotes && onViewNotes(account)}
+                      className="px-2 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition"
+                      title="Notes"
+                    >
+                      💬
+                    </button>
+                    <button
                       onClick={() => onAssignPromo(account, account.promoData)}
                       className="px-3 py-1.5 bg-gray-600 hover:bg-gray-500 text-white text-sm font-medium rounded transition"
                     >
@@ -223,20 +231,27 @@ const AccountListView = ({
                 </div>
 
                 {/* Action Buttons - Touch Friendly (44px height) */}
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     onClick={() => onQuickLog(account, account.promoData)}
                     className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium py-3 rounded-lg transition flex items-center justify-center space-x-2"
                   >
                     <span>📝</span>
-                    <span>Log Units</span>
+                    <span>Log</span>
+                  </button>
+                  <button
+                    onClick={() => onViewNotes && onViewNotes(account)}
+                    className="bg-gray-700 hover:bg-gray-600 active:bg-gray-800 text-white font-medium py-3 rounded-lg transition flex items-center justify-center space-x-2"
+                  >
+                    <span>💬</span>
+                    <span>Notes</span>
                   </button>
                   <button
                     onClick={() => onAssignPromo(account, account.promoData)}
                     className="bg-gray-600 hover:bg-gray-500 active:bg-gray-700 text-white font-medium py-3 rounded-lg transition flex items-center justify-center space-x-2"
                   >
                     <span>✏️</span>
-                    <span>Edit Promo</span>
+                    <span>Edit</span>
                   </button>
                 </div>
               </div>
