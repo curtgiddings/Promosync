@@ -8,6 +8,9 @@ import AssignPromo from './AssignPromo'
 import QuickEntry from './QuickEntry'
 import AddAccountToPromo from './AddAccountToPromo'
 import AddAccountModal from './AddAccountModal'
+import ActivityFeed from './ActivityFeed'
+import QuarterManagement from './QuarterManagement'
+import AccountNotes from './AccountNotes'
 import Toast from './Toast'
 
 const Dashboard = () => {
@@ -32,9 +35,15 @@ const Dashboard = () => {
   const [showAssignPromo, setShowAssignPromo] = useState(false)
   const [showAddToPromo, setShowAddToPromo] = useState(false)
   const [showAddAccount, setShowAddAccount] = useState(false)
+  const [showQuarterManagement, setShowQuarterManagement] = useState(false)
+  const [showAccountNotes, setShowAccountNotes] = useState(false)
   const [newAccountName, setNewAccountName] = useState('')
   const [selectedAccount, setSelectedAccount] = useState(null)
   const [selectedAccountPromo, setSelectedAccountPromo] = useState(null)
+  
+  // Quarter data
+  const [activeQuarter, setActiveQuarter] = useState(null)
+  const [quarterProgress, setQuarterProgress] = useState(50) // Percentage through quarter
   
   // Toast notifications
   const [toasts, setToasts] = useState([])
@@ -74,6 +83,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchAccounts()
+    fetchActiveQuarter()
   }, [])
 
   const fetchAccounts = async () => {
@@ -185,6 +195,39 @@ const Dashboard = () => {
     // Update both states
     setAccountProgress(progressMap)
     setAccountsWithPromos(updatedAccounts)
+  }
+
+  const fetchActiveQuarter = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('quarters')
+        .select('*')
+        .eq('is_active', true)
+        .single()
+
+      if (error && error.code !== 'PGRST116') {
+        // Table might not exist yet, use default
+        console.log('Quarters table not found, using defaults')
+        return
+      }
+
+      if (data) {
+        setActiveQuarter(data)
+        
+        // Calculate quarter progress (percentage through quarter)
+        const start = new Date(data.start_date)
+        const end = new Date(data.end_date)
+        const now = new Date()
+        
+        const totalDays = (end - start) / (1000 * 60 * 60 * 24)
+        const daysPassed = (now - start) / (1000 * 60 * 60 * 24)
+        
+        const progress = Math.min(100, Math.max(0, Math.round((daysPassed / totalDays) * 100)))
+        setQuarterProgress(progress)
+      }
+    } catch (error) {
+      console.error('Error fetching quarter:', error)
+    }
   }
 
   const showToast = (message, type = 'success') => {
@@ -314,13 +357,32 @@ const Dashboard = () => {
               <p className="text-sm text-gray-400">Welcome back, {user?.name}</p>
             </div>
             <div className="flex items-center space-x-3">
-              <span className="hidden md:block text-xs text-gray-500 bg-gray-700/50 px-2 py-1 rounded">
+              {/* Quarter Info */}
+              {activeQuarter && (
+                <div className="hidden md:flex items-center space-x-2 text-sm bg-gray-700/50 px-3 py-1.5 rounded-lg">
+                  <span className="text-gray-400">📅</span>
+                  <span className="text-white font-medium">{activeQuarter.name}</span>
+                  <span className="text-gray-400">•</span>
+                  <span className="text-blue-400">{quarterProgress}% complete</span>
+                </div>
+              )}
+              
+              <span className="hidden lg:block text-xs text-gray-500 bg-gray-700/50 px-2 py-1 rounded">
                 Press <kbd className="px-1.5 py-0.5 bg-gray-600 rounded text-gray-300 font-mono text-xs">/</kbd> to search
               </span>
               {isAdmin && (
-                <span className="px-3 py-1 bg-blue-600/90 text-white text-sm rounded-full font-medium">
-                  Admin
-                </span>
+                <>
+                  <button
+                    onClick={() => setShowQuarterManagement(true)}
+                    className="hidden sm:flex items-center space-x-1 px-3 py-1.5 bg-gray-700/80 hover:bg-gray-600 text-white text-sm rounded-lg transition"
+                  >
+                    <span>📅</span>
+                    <span>Quarters</span>
+                  </button>
+                  <span className="px-3 py-1 bg-blue-600/90 text-white text-sm rounded-full font-medium">
+                    Admin
+                  </span>
+                </>
               )}
               <button
                 onClick={signOut}
@@ -579,6 +641,10 @@ const Dashboard = () => {
             accountProgress={accountProgress}
             onAssignPromo={handleAssignPromo}
             onQuickLog={handleQuickLog}
+            onViewNotes={(account) => {
+              setSelectedAccount(account)
+              setShowAccountNotes(true)
+            }}
           />
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -593,6 +659,11 @@ const Dashboard = () => {
             ))}
           </div>
         )}
+
+        {/* Activity Feed - Below accounts on desktop, hidden on mobile */}
+        <div className="hidden lg:block mt-8">
+          <ActivityFeed limit={10} />
+        </div>
       </main>
 
       {/* Modals */}
@@ -673,6 +744,27 @@ const Dashboard = () => {
               setSelectedAccountPromo(null)
               setShowAssignPromo(true)
             }, 500)
+          }}
+        />
+      )}
+
+      {/* Quarter Management Modal (Admin Only) */}
+      {showQuarterManagement && (
+        <QuarterManagement
+          onClose={() => {
+            setShowQuarterManagement(false)
+            fetchActiveQuarter()
+          }}
+        />
+      )}
+
+      {/* Account Notes Modal */}
+      {showAccountNotes && selectedAccount && (
+        <AccountNotes
+          account={selectedAccount}
+          onClose={() => {
+            setShowAccountNotes(false)
+            setSelectedAccount(null)
           }}
         />
       )}
