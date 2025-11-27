@@ -60,7 +60,9 @@ const AccountListView = ({
             </div>
           ) : (
             accounts.map((account) => {
-              const progress = accountProgress[account.id] || 0
+              const progressData = accountProgress[account.id] || { progress: 0, units_sold: 0 }
+              const progress = progressData.progress || 0
+              const unitsSold = progressData.units_sold || account.units_sold || 0
               
               return (
                 <div 
@@ -112,7 +114,7 @@ const AccountListView = ({
                     <div className="space-y-1">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-300">
-                          {account.units_sold || 0} / {account.target_units || 0}
+                          {unitsSold} / {account.target_units || 0}
                         </span>
                         <span className={`font-bold ${getStatusColor(progress)}`}>
                           {getStatusIcon(progress)} {progress}%
@@ -159,7 +161,9 @@ const AccountListView = ({
           </div>
         ) : (
           accounts.map((account) => {
-            const progress = accountProgress[account.id] || 0
+            const progressData = accountProgress[account.id] || { progress: 0, units_sold: 0 }
+            const progress = progressData.progress || 0
+            const unitsSold = progressData.units_sold || account.units_sold || 0
             
             return (
               <div 
@@ -207,7 +211,7 @@ const AccountListView = ({
                 <div className="mb-3">
                   <div className="flex items-center justify-between text-sm mb-2">
                     <span className="text-gray-300">
-                      {account.units_sold || 0} / {account.target_units || 0} units
+                      {unitsSold} / {account.target_units || 0} units
                     </span>
                   </div>
                   <div className="w-full bg-gray-700 rounded-full h-3">
