@@ -134,11 +134,13 @@ const Dashboard = () => {
 
   const calculateAllProgress = async (accountsList) => {
     const progressMap = {}
+    const updatedAccounts = [...accountsList]
     
-    for (const account of accountsList) {
+    for (let i = 0; i < updatedAccounts.length; i++) {
+      const account = updatedAccounts[i]
       try {
         if (!account.promo_id) {
-          progressMap[account.id] = 0
+          progressMap[account.id] = { progress: 0, units_sold: 0 }
           continue
         }
 
@@ -151,16 +153,19 @@ const Dashboard = () => {
         const totalUnits = transactions?.reduce((sum, t) => sum + t.units_sold, 0) || 0
         const progress = account.target_units ? Math.round((totalUnits / account.target_units) * 100) : 0
         
-        progressMap[account.id] = progress
+        // Store both progress and units_sold
+        progressMap[account.id] = { progress, units_sold: totalUnits }
         
-        // Store units_sold in account for list view
-        account.units_sold = totalUnits
+        // Update account object with units_sold
+        updatedAccounts[i] = { ...account, units_sold: totalUnits }
       } catch (error) {
-        progressMap[account.id] = 0
+        progressMap[account.id] = { progress: 0, units_sold: 0 }
       }
     }
     
+    // Update both states
     setAccountProgress(progressMap)
+    setAccountsWithPromos(updatedAccounts)
   }
 
   const showToast = (message, type = 'success') => {
@@ -183,7 +188,7 @@ const Dashboard = () => {
     
     let matchesStatus = true
     if (statusFilter !== 'all') {
-      const progress = accountProgress[account.id]
+      const progress = accountProgress[account.id]?.progress || 0
       if (statusFilter === 'behind') {
         matchesStatus = progress >= 0 && progress < 75
       } else if (statusFilter === 'ontrack') {
@@ -202,17 +207,23 @@ const Dashboard = () => {
         ? accountsWithPromos 
         : accountsWithPromos.filter(a => a.territory === territory)
 
-      const exportData = accountsToExport.map(account => ({
-        'Account Name': account.account_name,
-        'Territory': account.territory,
-        'Promo': account.promo_name || 'Not Assigned',
-        'Discount': account.discount ? `${account.discount}%` : 'N/A',
-        'Terms': account.terms || 'N/A',
-        'Target': account.target_units || 0,
-        'Units Sold': account.units_sold || 0,
-        'Progress': `${accountProgress[account.id] || 0}%`,
-        'Status': accountProgress[account.id] >= 100 ? 'Met' : accountProgress[account.id] >= 75 ? 'On Track' : 'Behind'
-      }))
+      const exportData = accountsToExport.map(account => {
+        const progressData = accountProgress[account.id] || { progress: 0, units_sold: 0 }
+        const progress = progressData.progress || 0
+        const unitsSold = progressData.units_sold || account.units_sold || 0
+        
+        return {
+          'Account Name': account.account_name,
+          'Territory': account.territory,
+          'Promo': account.promo_name || 'Not Assigned',
+          'Discount': account.discount ? `${account.discount}%` : 'N/A',
+          'Terms': account.terms || 'N/A',
+          'Target': account.target_units || 0,
+          'Units Sold': unitsSold,
+          'Progress': `${progress}%`,
+          'Status': progress >= 100 ? 'Met' : progress >= 75 ? 'On Track' : 'Behind'
+        }
+      })
 
       const headers = Object.keys(exportData[0])
       const csvContent = [
