@@ -134,6 +134,24 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
       }
 
       // Success!
+      
+      // Log activity
+      try {
+        await supabase
+          .from('activity_log')
+          .insert({
+            action_type: currentPromo ? 'promo_changed' : 'promo_assigned',
+            account_id: account.id,
+            rep_id: null, // Could add user.id if available
+            details: { 
+              promo_name: promos.find(p => p.id === selectedPromo)?.promo_name,
+              target_units: parseInt(targetUnits)
+            }
+          })
+      } catch (e) {
+        // Activity logging is optional, don't block on failure
+      }
+
       onSuccess()
       onClose()
     } catch (err) {
