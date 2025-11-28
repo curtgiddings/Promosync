@@ -152,13 +152,11 @@ const StatsHeader = ({ onFilterBehindPace }) => {
   // Calculate pace status
   const getPaceStatus = () => {
     const { teamGoal } = stats
-    const { progress: quarterProgress } = quarterInfo
-    const diff = teamGoal - quarterProgress
+    const { progress: quarterProg } = quarterInfo
+    const diff = teamGoal - quarterProg
 
     if (teamGoal >= 100) {
       return { status: 'Target Met! 🎉', color: 'text-green-400', bgColor: 'bg-green-500/20', icon: '✅' }
-    } else if (diff >= 10) {
-      return { status: 'Ahead of Pace', color: 'text-green-400', bgColor: 'bg-green-500/20', icon: '🚀' }
     } else if (diff >= -10) {
       return { status: 'On Pace', color: 'text-blue-400', bgColor: 'bg-blue-500/20', icon: '📊' }
     } else {
