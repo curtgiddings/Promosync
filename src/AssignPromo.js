@@ -18,6 +18,7 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
   const [selectedPromo, setSelectedPromo] = useState('')
   const [targetUnits, setTargetUnits] = useState('')
   const [terms, setTerms] = useState('')
+  const [initialUnits, setInitialUnits] = useState('') // Optional starting units
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -134,6 +135,35 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
         } catch (e) {
           // Email notification is optional, don't block on failure
           console.log('Email notification skipped:', e)
+        }
+      }
+
+      // Create initial units transaction if provided (only for new assignments)
+      if (!currentPromo && initialUnits && parseInt(initialUnits) > 0) {
+        try {
+          await supabase
+            .from('transactions')
+            .insert({
+              account_id: account.id,
+              units_sold: parseInt(initialUnits),
+              logged_by: user?.id,
+              notes: 'Initial units on promo assignment'
+            })
+
+          // Log the transaction activity
+          await supabase
+            .from('activity_log')
+            .insert({
+              action_type: 'units_logged',
+              account_id: account.id,
+              rep_id: user?.id,
+              details: { 
+                units: parseInt(initialUnits),
+                note: 'Initial units on promo assignment'
+              }
+            })
+        } catch (e) {
+          console.log('Initial units logging skipped:', e)
         }
       }
 
@@ -262,6 +292,24 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
                       <option value="30/60/90/120/150">30/60/90/120/150</option>
                     </select>
                   </div>
+
+                  {/* Initial Units - Only show for new assignments */}
+                  {!currentPromo && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Initial Units <span className="text-gray-500">(optional)</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={initialUnits}
+                        onChange={(e) => setInitialUnits(e.target.value)}
+                        min="0"
+                        className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Log starting units (optional)"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">Already have units sold? Add them now.</p>
+                    </div>
+                  )}
 
                   {/* Action Buttons */}
                   <div className="flex space-x-3 pt-4">
