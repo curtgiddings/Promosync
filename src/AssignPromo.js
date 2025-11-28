@@ -154,6 +154,26 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
         // Activity logging is optional, don't block on failure
       }
 
+      // Send email notification (only for new assignments, not edits)
+      if (!currentPromo) {
+        try {
+          await fetch('/api/notify-promo-assigned', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              accountId: account.id,
+              accountName: account.account_name,
+              territory: account.territory,
+              promoName: promos.find(p => p.id === selectedPromo)?.promo_name,
+              targetUnits: parseInt(targetUnits)
+            })
+          })
+        } catch (e) {
+          // Email notification is optional, don't block on failure
+          console.log('Email notification skipped:', e)
+        }
+      }
+
       onSuccess()
       onClose()
     } catch (err) {
