@@ -1,14 +1,19 @@
 // /api/notify-promo-assigned.js
-// Sends email when account is assigned to promo (for reps who opted in)
+// Sends email when account is assigned to promo
 
-import { createClient } from '@supabase/supabase-js'
+const { createClient } = require('@supabase/supabase-js')
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY // Need service key for server-side
+  process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.REACT_APP_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
 )
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
+  // Allow GET for testing
+  if (req.method === 'GET') {
+    return res.status(200).json({ status: 'API is working', method: 'Use POST to send notifications' })
+  }
+  
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
@@ -30,7 +35,7 @@ export default async function handler(req, res) {
     if (repsError) throw repsError
 
     // Filter reps whose territories include this account's territory
-    const repsToNotify = reps.filter(rep => 
+    const repsToNotify = (reps || []).filter(rep => 
       rep.territories && rep.territories.includes(territory)
     )
 
@@ -71,7 +76,7 @@ export default async function handler(req, res) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'PromoSync <notifications@promosync.io>',
+          from: 'PromoSync <onboarding@resend.dev>',
           to: rep.email,
           subject: `🎯 New Promo: ${accountName} assigned to ${promoName}`,
           html: html,
@@ -79,13 +84,17 @@ export default async function handler(req, res) {
       })
 
       // Log notification
-      await supabase.from('notification_log').insert({
-        rep_id: rep.id,
-        notification_type: 'territory_promo',
-        subject: `New Promo: ${accountName} assigned to ${promoName}`,
-        status: response.ok ? 'sent' : 'failed',
-        details: { accountId, accountName, territory, promoName }
-      })
+      try {
+        await supabase.from('notification_log').insert({
+          rep_id: rep.id,
+          notification_type: 'territory_promo',
+          subject: `New Promo: ${accountName} assigned to ${promoName}`,
+          status: response.ok ? 'sent' : 'failed',
+          details: { accountId, accountName, territory, promoName }
+        })
+      } catch (e) {
+        console.log('Failed to log notification:', e)
+      }
 
       return response.ok
     })
@@ -101,6 +110,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Notification error:', error)
-    return res.status(500).json({ error: 'Failed to send notifications' })
+    return res.status(500).json({ error: 'Failed to send notifications', details: error.message })
   }
 }
