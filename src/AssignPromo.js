@@ -21,13 +21,9 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
-  
-  // New: Track existing promo
-  const [existingPromo, setExistingPromo] = useState(null)
 
   useEffect(() => {
     fetchPromos()
-    checkExistingPromo()
     
     // Pre-fill if editing existing promo (passed from parent)
     if (currentPromo) {
@@ -55,41 +51,6 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
     }
   }
 
-  // Check if account already has a promo assigned
-  const checkExistingPromo = async () => {
-    // Skip check if we're editing (currentPromo is passed)
-    if (currentPromo) return
-
-    try {
-      const { data, error } = await supabase
-        .from('account_promos')
-        .select(`
-          *,
-          promos (
-            id,
-            promo_name,
-            promo_code,
-            discount
-          )
-        `)
-        .eq('account_id', account.id)
-        .order('assigned_date', { ascending: false })
-        .limit(1)
-        .single()
-
-      if (error && error.code !== 'PGRST116') {
-        // PGRST116 = no rows returned, which is fine
-        throw error
-      }
-
-      if (data) {
-        setExistingPromo(data)
-      }
-    } catch (err) {
-      console.error('Error checking existing promo:', err)
-    }
-  }
-
   const handleSubmit = async (e) => {
     e.preventDefault()
     
@@ -108,7 +69,7 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
 
     try {
       if (currentPromo) {
-        // Update existing assignment (editing)
+        // Update existing assignment
         const { error: updateError } = await supabase
           .from('account_promos')
           .update({
@@ -121,7 +82,7 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
 
         if (updateError) throw updateError
       } else {
-        // Create new assignment (no existing promo)
+        // Create new assignment
         const { error: insertError } = await supabase
           .from('account_promos')
           .insert({
@@ -154,7 +115,7 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
         // Activity logging is optional, don't block on failure
       }
 
-      // Send email notification (only for new assignments, not edits)
+      // Send email notification (only for NEW assignments, not edits)
       if (!currentPromo) {
         try {
           await fetch('/api/notify-promo-assigned', {
@@ -206,7 +167,7 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
           {/* Header */}
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-semibold text-white">
-              {currentPromo ? 'Edit Promo' : existingPromo ? 'Change Promo' : 'Assign Promo'}
+              {currentPromo ? 'Edit Promo' : 'Assign Promo'}
             </h2>
             <button
               onClick={onClose}
@@ -227,43 +188,6 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
             </div>
           </div>
 
-          {/* ALREADY ON PROMO - Block and advise to edit */}
-          {existingPromo && !currentPromo && (
-            <div className="mb-6 p-5 bg-yellow-500/10 border border-yellow-500/50 rounded-lg">
-              <div className="flex items-start space-x-3">
-                <span className="text-2xl">⚠️</span>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-yellow-400 mb-3">
-                    Account Already on a Promo
-                  </h3>
-                  <div className="bg-gray-800/50 rounded-lg p-3 mb-4">
-                    <p className="text-white font-medium">
-                      {existingPromo.promos?.promo_name}
-                      {existingPromo.promos?.discount && (
-                        <span className="text-green-400 ml-2">
-                          ({existingPromo.promos.discount}% off)
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-gray-400 text-sm">
-                      Target: {existingPromo.target_units} units
-                      {existingPromo.terms && ` • Terms: ${existingPromo.terms}`}
-                    </p>
-                  </div>
-                  <p className="text-gray-300 text-sm mb-4">
-                    To change this account's promo, use the <strong className="text-white">Edit</strong> button on the account instead.
-                  </p>
-                  <button
-                    onClick={onClose}
-                    className="w-full px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg transition"
-                  >
-                    Got It
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Error Message */}
           {error && (
             <div className="mb-4 p-4 bg-red-500/10 border border-red-500/50 text-red-400 rounded-lg">
@@ -271,19 +195,17 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
             </div>
           )}
 
-          {/* Form - Only show if NO existing promo OR if editing */}
-          {(!existingPromo || currentPromo) && (
-            <>
-              {loading ? (
-                <div className="text-center py-8">
-                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                  <p className="text-gray-400 mt-2">Loading promos...</p>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  {/* Promo Dropdown */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+          {/* Form - Always show */}
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              <p className="text-gray-400 mt-2">Loading promos...</p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Promo Dropdown */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                       Select Promo <span className="text-red-400">*</span>
                     </label>
                     <select
@@ -361,8 +283,6 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
                   </div>
                 </form>
               )}
-            </>
-          )}
 
           {/* Help Text */}
           <div className="mt-4 pt-4 border-t border-gray-700/50 text-sm text-gray-500">
