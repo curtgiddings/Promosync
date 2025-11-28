@@ -44,12 +44,12 @@ const AccountListView = ({
     const diff = progress - quarterProgress
     
     if (progress >= 100) {
-      return { label: 'Met', color: 'text-green-400', bg: 'bg-green-500/20' }
-    } else if (diff >= 10) {
-      return { label: `+${Math.round(diff)}%`, color: 'text-green-400', bg: 'bg-green-500/20' }
+      return { label: 'Met ✓', color: 'text-green-400', bg: 'bg-green-500/20' }
     } else if (diff >= -10) {
+      // Within 10% of quarter progress = On Pace
       return { label: 'On Pace', color: 'text-blue-400', bg: 'bg-blue-500/20' }
     } else {
+      // More than 10% behind = Behind Pace (show the gap)
       return { label: `${Math.round(diff)}%`, color: 'text-red-400', bg: 'bg-red-500/20' }
     }
   }
