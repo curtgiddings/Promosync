@@ -61,7 +61,7 @@ export default async function handler(req, res) {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            from: 'PromoSync <onboarding@resend.dev>',
+            from: 'PromoSync <notifications@promosync.io>',
             to: req.query.email,
             subject: '🎯 TEST: New Promo Assignment',
             html: testHtml,
@@ -179,7 +179,7 @@ export default async function handler(req, res) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'PromoSync <onboarding@resend.dev>',
+          from: 'PromoSync <notifications@promosync.io>',
           to: rep.email,
           subject: `🎯 New Promo: ${accountName} assigned to ${promoName}`,
           html: html,
