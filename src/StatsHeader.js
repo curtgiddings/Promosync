@@ -15,11 +15,12 @@ import { supabase } from './supabaseClient'
 const StatsHeader = () => {
   const [stats, setStats] = useState({
     totalUnits: 0,
-    avgProgress: 0,
     accountsOnPromo: 0,
     totalAccounts: 0,
     teamGoal: 0,
-    targetUnits: 0
+    targetUnits: 0,
+    behindPace: 0,
+    metTarget: 0
   })
   const [quarterInfo, setQuarterInfo] = useState({
     name: 'Q4 2025',
@@ -92,30 +93,54 @@ const StatsHeader = () => {
       // Calculate total units
       const totalUnits = transactions?.reduce((sum, t) => sum + t.units_sold, 0) || 0
 
-      // Calculate average progress per account on promo
-      let totalProgress = 0
+      // Calculate team goal
+      const teamGoal = targetUnits > 0 ? Math.round((totalUnits / targetUnits) * 100) : 0
+
+      // Calculate per-account progress and count behind pace
+      let behindPace = 0
+      let metTarget = 0
+      
       if (accountPromos && transactions) {
+        // Get current quarter progress for comparison
+        const { data: quarterData } = await supabase
+          .from('quarters')
+          .select('start_date, end_date')
+          .eq('is_active', true)
+          .single()
+        
+        let qProgress = 50 // default
+        if (quarterData) {
+          const start = new Date(quarterData.start_date)
+          const end = new Date(quarterData.end_date)
+          const now = new Date()
+          const totalDays = (end - start) / (1000 * 60 * 60 * 24)
+          const daysPassed = (now - start) / (1000 * 60 * 60 * 24)
+          qProgress = Math.round((daysPassed / totalDays) * 100)
+        }
+        
         accountPromos.forEach(ap => {
           const accountTransactions = transactions.filter(
             t => t.account_id === ap.account_id
           )
           const accountTotal = accountTransactions.reduce((sum, t) => sum + t.units_sold, 0)
-          const progress = (accountTotal / ap.target_units) * 100
-          totalProgress += progress
+          const progress = ap.target_units > 0 ? (accountTotal / ap.target_units) * 100 : 0
+          
+          if (progress >= 100) {
+            metTarget++
+          } else if (progress < qProgress - 10) {
+            behindPace++
+          }
         })
       }
-      const avgProgress = accountsOnPromo > 0 ? Math.round(totalProgress / accountsOnPromo) : 0
-
-      // Calculate team goal
-      const teamGoal = targetUnits > 0 ? Math.round((totalUnits / targetUnits) * 100) : 0
 
       setStats({
         totalUnits,
-        avgProgress,
         accountsOnPromo,
         totalAccounts,
         teamGoal,
-        targetUnits
+        targetUnits,
+        behindPace,
+        metTarget
       })
     } catch (error) {
       console.error('Error fetching stats:', error)
@@ -174,17 +199,19 @@ const StatsHeader = () => {
              'from-red-500 to-red-600'
     },
     {
-      icon: '📈',
-      label: 'Avg Progress',
-      value: `${stats.avgProgress}%`,
-      subtitle: 'per account',
-      color: 'from-purple-500 to-purple-600'
+      icon: '⚠️',
+      label: 'Behind Pace',
+      value: stats.behindPace,
+      subtitle: stats.behindPace === 0 ? 'All on track!' : 'need attention',
+      color: stats.behindPace === 0 ? 'from-green-500 to-green-600' : 
+             stats.behindPace <= 2 ? 'from-yellow-500 to-yellow-600' : 
+             'from-red-500 to-red-600'
     },
     {
       icon: '🏢',
       label: 'Accounts',
       value: `${stats.accountsOnPromo}/${stats.totalAccounts}`,
-      subtitle: 'on active promo',
+      subtitle: `${stats.metTarget} met target`,
       color: 'from-indigo-500 to-indigo-600'
     }
   ]
