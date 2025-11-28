@@ -57,9 +57,7 @@ const AddAccountModal = ({ accountName, onClose, onSuccess }) => {
     const promo = promos.find(p => p.id === promoId)
     if (promo) {
       setTargetUnits(promo.default_target)
-      if (promo.terms) {
-        setTerms(promo.terms)
-      }
+      setTerms(promo.terms || '') // Always set from promo
     }
   }
 
