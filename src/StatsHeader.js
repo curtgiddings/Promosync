@@ -12,7 +12,7 @@ import { supabase } from './supabaseClient'
  * - Quarter pace indicator (Ahead/On Pace/Behind)
  */
 
-const StatsHeader = () => {
+const StatsHeader = ({ onFilterBehindPace }) => {
   const [stats, setStats] = useState({
     totalUnits: 0,
     accountsOnPromo: 0,
@@ -187,7 +187,8 @@ const StatsHeader = () => {
       label: 'Total Units',
       value: stats.totalUnits.toLocaleString(),
       subtitle: `of ${stats.targetUnits.toLocaleString()} target`,
-      color: 'from-blue-500 to-blue-600'
+      color: 'from-blue-500 to-blue-600',
+      clickable: false
     },
     {
       icon: '🎯',
@@ -196,23 +197,27 @@ const StatsHeader = () => {
       subtitle: stats.teamGoal >= 100 ? '🎉 Target Met!' : 'Keep going!',
       color: stats.teamGoal >= 100 ? 'from-green-500 to-green-600' : 
              stats.teamGoal >= 75 ? 'from-yellow-500 to-yellow-600' : 
-             'from-red-500 to-red-600'
-    },
-    {
-      icon: '⚠️',
-      label: 'Behind Pace',
-      value: stats.behindPace,
-      subtitle: stats.behindPace === 0 ? 'All on track!' : 'need attention',
-      color: stats.behindPace === 0 ? 'from-green-500 to-green-600' : 
-             stats.behindPace <= 2 ? 'from-yellow-500 to-yellow-600' : 
-             'from-red-500 to-red-600'
+             'from-red-500 to-red-600',
+      clickable: false
     },
     {
       icon: '🏢',
       label: 'Accounts',
       value: `${stats.accountsOnPromo}/${stats.totalAccounts}`,
       subtitle: `${stats.metTarget} met target`,
-      color: 'from-indigo-500 to-indigo-600'
+      color: 'from-indigo-500 to-indigo-600',
+      clickable: false
+    },
+    {
+      icon: '⚠️',
+      label: 'Behind Pace',
+      value: stats.behindPace,
+      subtitle: stats.behindPace === 0 ? 'All on track!' : 'click to view',
+      color: stats.behindPace === 0 ? 'from-green-500 to-green-600' : 
+             stats.behindPace <= 2 ? 'from-yellow-500 to-yellow-600' : 
+             'from-red-500 to-red-600',
+      clickable: stats.behindPace > 0,
+      onClick: () => onFilterBehindPace && onFilterBehindPace()
     }
   ]
 
@@ -251,10 +256,18 @@ const StatsHeader = () => {
         {statCards.map((stat, index) => (
           <div
             key={index}
-            className={`bg-gradient-to-br ${stat.color} rounded-lg p-4 shadow-lg transform transition-all duration-200 hover:scale-105`}
+            onClick={stat.clickable ? stat.onClick : undefined}
+            className={`bg-gradient-to-br ${stat.color} rounded-lg p-4 shadow-lg transform transition-all duration-200 hover:scale-105 ${
+              stat.clickable ? 'cursor-pointer ring-2 ring-white/20 hover:ring-white/40' : ''
+            }`}
           >
             <div className="flex items-start justify-between mb-2">
               <span className="text-3xl">{stat.icon}</span>
+              {stat.clickable && (
+                <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">
+                  Click to view
+                </span>
+              )}
             </div>
             <div className="text-white">
               <p className="text-sm opacity-90 mb-1">{stat.label}</p>
