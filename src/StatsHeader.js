@@ -201,8 +201,8 @@ const StatsHeader = ({ onFilterBehindPace }) => {
     {
       icon: '🏢',
       label: 'Accounts',
-      value: `${stats.accountsOnPromo}/${stats.totalAccounts}`,
-      subtitle: `${stats.metTarget} met target`,
+      value: stats.accountsOnPromo,
+      subtitle: stats.metTarget > 0 ? `${stats.metTarget} met target` : 'on promos',
       color: 'from-indigo-500 to-indigo-600',
       clickable: false
     },
@@ -261,11 +261,6 @@ const StatsHeader = ({ onFilterBehindPace }) => {
           >
             <div className="flex items-start justify-between mb-2">
               <span className="text-3xl">{stat.icon}</span>
-              {stat.clickable && (
-                <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">
-                  Click to view
-                </span>
-              )}
             </div>
             <div className="text-white">
               <p className="text-sm opacity-90 mb-1">{stat.label}</p>
