@@ -17,7 +17,7 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
   const [promos, setPromos] = useState([])
   const [selectedPromo, setSelectedPromo] = useState('')
   const [targetUnits, setTargetUnits] = useState('')
-  const [terms, setTerms] = useState('30/60/90/120')
+  const [terms, setTerms] = useState('')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -149,13 +149,18 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
     const promoId = e.target.value
     setSelectedPromo(promoId)
     
-    // Auto-fill default target based on promo
+    // Auto-fill default target and terms based on promo
     const selectedPromoData = promos.find(p => p.id === promoId)
     if (selectedPromoData) {
       // Extract target from promo name (e.g., "SY125" -> 125)
       const match = selectedPromoData.promo_name.match(/\d+/)
       if (match && !targetUnits) {
         setTargetUnits(match[0])
+      }
+      
+      // Always auto-fill terms from promo
+      if (selectedPromoData.terms) {
+        setTerms(selectedPromoData.terms)
       }
     }
   }
@@ -249,11 +254,10 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
                       onChange={(e) => setTerms(e.target.value)}
                       className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
+                      <option value="">No terms</option>
+                      <option value="30/60/90">30/60/90</option>
                       <option value="30/60/90/120">30/60/90/120</option>
                       <option value="30/60/90/120/150">30/60/90/120/150</option>
-                      <option value="60/90/120">60/90/120</option>
-                      <option value="Net 30">Net 30</option>
-                      <option value="Net 60">Net 60</option>
                     </select>
                   </div>
 
