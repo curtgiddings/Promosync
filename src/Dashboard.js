@@ -782,14 +782,8 @@ const Dashboard = () => {
           onSuccess={(newAccount) => {
             setShowAddAccount(false)
             setNewAccountName('')
-            fetchAccounts()
+            handleRefresh()
             showToast('Account added successfully!', 'success')
-            // Auto-open assign promo for new account
-            setTimeout(() => {
-              setSelectedAccount(newAccount)
-              setSelectedAccountPromo(null)
-              setShowAssignPromo(true)
-            }, 500)
           }}
         />
       )}
