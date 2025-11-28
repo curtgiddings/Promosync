@@ -254,13 +254,12 @@ const Dashboard = () => {
     let matchesStatus = true
     if (statusFilter !== 'all') {
       const progress = accountProgress[account.id]?.progress || 0
-      if (statusFilter === 'needs_attention') {
+      if (statusFilter === 'behind_pace') {
         // Behind pace: progress is more than 10% behind quarter progress
         matchesStatus = progress < 100 && progress < (quarterProgress - 10)
-      } else if (statusFilter === 'behind') {
-        matchesStatus = progress >= 0 && progress < 75
-      } else if (statusFilter === 'ontrack') {
-        matchesStatus = progress >= 75 && progress < 100
+      } else if (statusFilter === 'on_pace') {
+        // On pace: within 10% of quarter progress (but not met target)
+        matchesStatus = progress < 100 && progress >= (quarterProgress - 10)
       } else if (statusFilter === 'met') {
         matchesStatus = progress >= 100
       }
@@ -415,7 +414,7 @@ const Dashboard = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
         {/* Stats Dashboard */}
-        <StatsHeader onFilterBehindPace={() => setStatusFilter('needs_attention')} />
+        <StatsHeader onFilterBehindPace={() => setStatusFilter('behind_pace')} />
 
         {/* Quick Actions Bar - Mobile Responsive */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 px-2 sm:px-4">
@@ -578,37 +577,26 @@ const Dashboard = () => {
               All Accounts
             </button>
             <button
-              onClick={() => setStatusFilter('needs_attention')}
+              onClick={() => setStatusFilter('behind_pace')}
               className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center space-x-1.5 ${
-                statusFilter === 'needs_attention'
-                  ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/30'
-                  : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700 border border-gray-600/50'
-              }`}
-            >
-              <span>⚠️</span>
-              <span>Needs Attention</span>
-            </button>
-            <button
-              onClick={() => setStatusFilter('behind')}
-              className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center space-x-1.5 ${
-                statusFilter === 'behind'
+                statusFilter === 'behind_pace'
                   ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
                   : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700 border border-gray-600/50'
               }`}
             >
-              <span>🔴</span>
-              <span>Behind</span>
+              <span>⚠️</span>
+              <span>Behind Pace</span>
             </button>
             <button
-              onClick={() => setStatusFilter('ontrack')}
+              onClick={() => setStatusFilter('on_pace')}
               className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center space-x-1.5 ${
-                statusFilter === 'ontrack'
-                  ? 'bg-yellow-600 text-white shadow-lg shadow-yellow-600/30'
+                statusFilter === 'on_pace'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
                   : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700 border border-gray-600/50'
               }`}
             >
-              <span>🟡</span>
-              <span>On Track</span>
+              <span>📊</span>
+              <span>On Pace</span>
             </button>
             <button
               onClick={() => setStatusFilter('met')}
