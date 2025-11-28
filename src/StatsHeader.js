@@ -200,9 +200,9 @@ const StatsHeader = ({ onFilterBehindPace }) => {
     },
     {
       icon: '🏢',
-      label: 'Accounts',
+      label: 'On Promos',
       value: stats.accountsOnPromo,
-      subtitle: stats.metTarget > 0 ? `${stats.metTarget} met target` : 'on promos',
+      subtitle: stats.metTarget > 0 ? `${stats.metTarget} met target` : 'accounts',
       color: 'from-indigo-500 to-indigo-600',
       clickable: false
     },
