@@ -1,41 +1,57 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
+import { useAuth } from './AuthContext'
 
 /**
- * AddAccountToPromo Component
+ * AddAccountToPromo Component - Combined Flow
  * 
- * Modal that searches ALL accounts (including those not on promos)
- * Shows which accounts have promos, which don't
- * Quick assign workflow
+ * Single modal: Search account → Select → Assign promo (all in one)
  */
 
-const AddAccountToPromo = ({ onClose, onAssign, onAddNew }) => {
+const AddAccountToPromo = ({ onClose, onSuccess, onAddNew }) => {
+  const { user } = useAuth()
+  
+  // Step tracking
+  const [step, setStep] = useState(1) // 1 = search, 2 = assign
+  
+  // Account search
   const [searchTerm, setSearchTerm] = useState('')
   const [allAccounts, setAllAccounts] = useState([])
   const [accountPromoStatus, setAccountPromoStatus] = useState({})
   const [loading, setLoading] = useState(true)
   const [filteredAccounts, setFilteredAccounts] = useState([])
+  
+  // Selected account
+  const [selectedAccount, setSelectedAccount] = useState(null)
+  
+  // Promo assignment
+  const [promos, setPromos] = useState([])
+  const [selectedPromo, setSelectedPromo] = useState('')
+  const [targetUnits, setTargetUnits] = useState('')
+  const [terms, setTerms] = useState('')
+  const [initialUnits, setInitialUnits] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     fetchAllAccounts()
+    fetchPromos()
   }, [])
 
   useEffect(() => {
-    // Filter accounts based on search
     if (searchTerm.trim() === '') {
-      setFilteredAccounts(allAccounts.slice(0, 50)) // Show first 50 by default
+      setFilteredAccounts(allAccounts.slice(0, 50))
     } else {
       const filtered = allAccounts.filter(account => 
         account.account_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         account.territory?.toLowerCase().includes(searchTerm.toLowerCase())
       )
-      setFilteredAccounts(filtered.slice(0, 50)) // Limit to 50 results
+      setFilteredAccounts(filtered.slice(0, 50))
     }
   }, [searchTerm, allAccounts])
 
   const fetchAllAccounts = async () => {
     try {
-      // Fetch ALL accounts
       const { data: accountsData, error: accountsError } = await supabase
         .from('accounts')
         .select('*')
@@ -43,7 +59,6 @@ const AddAccountToPromo = ({ onClose, onAssign, onAddNew }) => {
 
       if (accountsError) throw accountsError
 
-      // Fetch account_promos to see which accounts are on promos
       const { data: accountPromos, error: promosError } = await supabase
         .from('account_promos')
         .select(`
@@ -51,40 +66,27 @@ const AddAccountToPromo = ({ onClose, onAssign, onAddNew }) => {
           target_units,
           terms,
           promos (
-            id,
             promo_name,
-            promo_code,
             discount
           )
         `)
 
       if (promosError) throw promosError
 
-      // Build status map
-      const statusMap = {}
-      accountPromos.forEach(ap => {
-        statusMap[ap.account_id] = {
+      const promoStatusMap = {}
+      accountPromos?.forEach(ap => {
+        promoStatusMap[ap.account_id] = {
           hasPromo: true,
           promoName: ap.promos?.promo_name,
-          promoCode: ap.promos?.promo_code,
           discount: ap.promos?.discount,
-          targetUnits: ap.target_units,
-          terms: ap.terms,
-          promoData: ap
+          target: ap.target_units,
+          terms: ap.terms
         }
       })
 
-      // Mark accounts without promos
-      accountsData.forEach(account => {
-        if (!statusMap[account.id]) {
-          statusMap[account.id] = {
-            hasPromo: false
-          }
-        }
-      })
-
-      setAllAccounts(accountsData)
-      setAccountPromoStatus(statusMap)
+      setAllAccounts(accountsData || [])
+      setAccountPromoStatus(promoStatusMap)
+      setFilteredAccounts((accountsData || []).slice(0, 50))
     } catch (error) {
       console.error('Error fetching accounts:', error)
     } finally {
@@ -92,21 +94,169 @@ const AddAccountToPromo = ({ onClose, onAssign, onAddNew }) => {
     }
   }
 
-  const handleAssign = (account) => {
+  const fetchPromos = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('promos')
+        .select('*')
+        .eq('is_active', true)
+        .order('promo_name', { ascending: true })
+
+      if (error) throw error
+      setPromos(data || [])
+    } catch (err) {
+      console.error('Error fetching promos:', err)
+    }
+  }
+
+  const handleSelectAccount = (account) => {
     const status = accountPromoStatus[account.id]
-    onAssign(account, status.hasPromo ? status.promoData : null)
-    onClose()
+    if (status?.hasPromo) {
+      // Already on promo - can't assign
+      return
+    }
+    setSelectedAccount(account)
+    setStep(2)
+  }
+
+  const handlePromoChange = (e) => {
+    const promoId = e.target.value
+    setSelectedPromo(promoId)
+    
+    const selectedPromoData = promos.find(p => p.id === promoId)
+    if (selectedPromoData) {
+      const match = selectedPromoData.promo_name.match(/\d+/)
+      if (match && !targetUnits) {
+        setTargetUnits(match[0])
+      }
+      if (selectedPromoData.terms) {
+        setTerms(selectedPromoData.terms)
+      }
+    }
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    
+    if (!selectedPromo || !targetUnits) {
+      setError('Please fill in all required fields')
+      return
+    }
+
+    setSubmitting(true)
+    setError('')
+
+    try {
+      // Create promo assignment
+      const { error: insertError } = await supabase
+        .from('account_promos')
+        .insert({
+          account_id: selectedAccount.id,
+          promo_id: selectedPromo,
+          target_units: parseInt(targetUnits),
+          terms: terms,
+          assigned_date: new Date().toISOString()
+        })
+
+      if (insertError) throw insertError
+
+      // Log activity
+      try {
+        await supabase
+          .from('activity_log')
+          .insert({
+            action_type: 'promo_assigned',
+            account_id: selectedAccount.id,
+            rep_id: user?.id,
+            details: { 
+              promo_name: promos.find(p => p.id === selectedPromo)?.promo_name,
+              target_units: parseInt(targetUnits)
+            }
+          })
+      } catch (e) {}
+
+      // Send email notification
+      try {
+        await fetch('/api/notify-promo-assigned', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            accountId: selectedAccount.id,
+            accountName: selectedAccount.account_name,
+            territory: selectedAccount.territory,
+            promoName: promos.find(p => p.id === selectedPromo)?.promo_name,
+            targetUnits: parseInt(targetUnits),
+            terms: terms || null,
+            assignedBy: user?.name || user?.email || 'Unknown'
+          })
+        })
+      } catch (e) {}
+
+      // Create initial units transaction if provided
+      if (initialUnits && parseInt(initialUnits) > 0) {
+        try {
+          await supabase
+            .from('transactions')
+            .insert({
+              account_id: selectedAccount.id,
+              units_sold: parseInt(initialUnits),
+              logged_by: user?.id,
+              notes: 'Initial units on promo assignment'
+            })
+
+          await supabase
+            .from('activity_log')
+            .insert({
+              action_type: 'units_logged',
+              account_id: selectedAccount.id,
+              rep_id: user?.id,
+              details: { 
+                units: parseInt(initialUnits),
+                note: 'Initial units on promo assignment'
+              }
+            })
+        } catch (e) {}
+      }
+
+      onSuccess && onSuccess()
+      onClose()
+    } catch (err) {
+      console.error('Error assigning promo:', err)
+      setError('Failed to assign promo. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleBack = () => {
+    setStep(1)
+    setSelectedAccount(null)
+    setSelectedPromo('')
+    setTargetUnits('')
+    setTerms('')
+    setInitialUnits('')
+    setError('')
   }
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-xl max-w-3xl w-full max-h-[90vh] shadow-2xl border border-gray-700/50 flex flex-col">
+      <div className="bg-gray-900 rounded-xl max-w-lg w-full shadow-2xl border border-gray-700/50 max-h-[90vh] overflow-hidden flex flex-col">
+        
         {/* Header */}
-        <div className="p-6 border-b border-gray-700/50 flex-shrink-0">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h2 className="text-2xl font-semibold text-white">Add Account to Promo</h2>
-              <p className="text-gray-400 text-sm mt-1">Search from {allAccounts.length} accounts</p>
+        <div className="p-6 border-b border-gray-700/50">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-3">
+              {step === 2 && (
+                <button
+                  onClick={handleBack}
+                  className="text-gray-400 hover:text-white transition p-1"
+                >
+                  ←
+                </button>
+              )}
+              <h2 className="text-2xl font-semibold text-white">
+                {step === 1 ? 'Add to Promo' : 'Assign Promo'}
+              </h2>
             </div>
             <button
               onClick={onClose}
@@ -115,139 +265,220 @@ const AddAccountToPromo = ({ onClose, onAssign, onAddNew }) => {
               ✕
             </button>
           </div>
-
-          {/* Search Bar */}
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <span className="text-gray-400 text-lg">🔍</span>
-            </div>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by account name or territory..."
-              className="w-full pl-12 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              autoFocus
-            />
+          
+          {/* Step indicator */}
+          <div className="flex items-center mt-4 space-x-2">
+            <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
+              step >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400'
+            }`}>1</div>
+            <div className={`flex-1 h-1 rounded ${step >= 2 ? 'bg-blue-600' : 'bg-gray-700'}`}></div>
+            <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
+              step >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400'
+            }`}>2</div>
+          </div>
+          <div className="flex justify-between mt-1 text-xs text-gray-500">
+            <span>Select Account</span>
+            <span>Assign Promo</span>
           </div>
         </div>
 
-        {/* Results List */}
+        {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
-          {loading ? (
-            <div className="text-center py-12">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-              <p className="text-gray-400 mt-2">Loading accounts...</p>
-            </div>
-          ) : filteredAccounts.length === 0 ? (
-            <div className="text-center py-12">
-              <span className="text-4xl block mb-3">🔍</span>
-              <p className="text-gray-400 mb-2">No accounts found for "{searchTerm}"</p>
-              <p className="text-gray-500 text-sm mb-6">The account might not exist yet</p>
-              {onAddNew && (
-                <button
-                  onClick={() => {
-                    onClose()
-                    onAddNew(searchTerm)
-                  }}
-                  className="inline-flex items-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all shadow-lg"
-                >
-                  <span className="text-lg">➕</span>
-                  <span>Add New Account "{searchTerm}"</span>
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {filteredAccounts.map(account => {
-                const status = accountPromoStatus[account.id]
-                
-                return (
-                  <div
-                    key={account.id}
-                    className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4 hover:bg-gray-800 transition-all"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 min-w-0 mr-4">
-                        <div className="flex items-center space-x-3">
-                          <span className="text-xl">🏢</span>
-                          <div className="min-w-0 flex-1">
-                            <h3 className="text-white font-semibold truncate">
-                              {account.account_name}
-                            </h3>
-                            <div className="flex items-center space-x-3 mt-1">
-                              <span className="text-gray-400 text-sm">
-                                📍 {account.territory || 'No territory'}
-                              </span>
-                              {status.hasPromo && (
-                                <>
-                                  <span className="text-gray-600">•</span>
-                                  <span className="text-green-400 text-sm font-medium">
-                                    ✓ {status.promoName} ({status.discount}%)
-                                  </span>
-                                  {status.terms && (
-                                    <span className="text-gray-500 text-xs">
-                                      {status.terms}
-                                    </span>
-                                  )}
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+          
+          {/* STEP 1: Account Search */}
+          {step === 1 && (
+            <>
+              <div className="relative mb-4">
+                <input
+                  type="text"
+                  placeholder="Search by account name or territory..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full px-4 py-3 pl-10 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  autoFocus
+                />
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">🔍</span>
+              </div>
 
-                      {/* Action Button */}
-                      <button
-                        onClick={() => handleAssign(account)}
-                        className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center space-x-2 whitespace-nowrap ${
-                          status.hasPromo
-                            ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                            : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/30'
+              {loading ? (
+                <div className="text-center py-8">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                </div>
+              ) : filteredAccounts.length === 0 ? (
+                <div className="text-center py-8">
+                  <span className="text-4xl mb-2 block">🔍</span>
+                  <p className="text-gray-400 mb-4">No accounts found</p>
+                  {searchTerm && onAddNew && (
+                    <button
+                      onClick={() => {
+                        onClose()
+                        onAddNew(searchTerm)
+                      }}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+                    >
+                      ➕ Add "{searchTerm}" as new account
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {filteredAccounts.map(account => {
+                    const status = accountPromoStatus[account.id]
+                    const hasPromo = status?.hasPromo
+                    
+                    return (
+                      <div
+                        key={account.id}
+                        onClick={() => !hasPromo && handleSelectAccount(account)}
+                        className={`p-4 rounded-lg border transition-all ${
+                          hasPromo 
+                            ? 'bg-gray-800/30 border-gray-700/30 opacity-60 cursor-not-allowed'
+                            : 'bg-gray-800/50 border-gray-700/50 hover:bg-gray-800 hover:border-blue-500/50 cursor-pointer'
                         }`}
                       >
-                        {status.hasPromo ? (
-                          <>
-                            <span>✏️</span>
-                            <span>Edit</span>
-                          </>
-                        ) : (
-                          <>
-                            <span>➕</span>
-                            <span>Assign</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <span className="text-xl">🏢</span>
+                            <div>
+                              <h3 className="text-white font-semibold">{account.account_name}</h3>
+                              <p className="text-gray-400 text-sm">📍 {account.territory || 'No territory'}</p>
+                            </div>
+                          </div>
+                          {hasPromo ? (
+                            <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">
+                              ✓ {status.promoName}
+                            </span>
+                          ) : (
+                            <span className="text-blue-400 text-sm">Select →</span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              <p className="text-center text-gray-500 text-xs mt-4">
+                Showing {filteredAccounts.length} accounts • Accounts already on promos are disabled
+              </p>
+            </>
+          )}
+
+          {/* STEP 2: Assign Promo */}
+          {step === 2 && selectedAccount && (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Selected Account */}
+              <div className="p-4 bg-gray-800/50 border border-gray-700/50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <span className="text-2xl">🏢</span>
+                  <div>
+                    <p className="text-lg font-semibold text-white">{selectedAccount.account_name}</p>
+                    <p className="text-sm text-gray-400">📍 {selectedAccount.territory}</p>
                   </div>
-                )
-              })}
-            </div>
-          )}
+                </div>
+              </div>
 
-          {/* Showing X results */}
-          {!loading && filteredAccounts.length > 0 && (
-            <div className="mt-4 text-center text-gray-500 text-sm">
-              Showing {filteredAccounts.length} of {
-                searchTerm ? allAccounts.filter(a => 
-                  a.account_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  a.territory?.toLowerCase().includes(searchTerm.toLowerCase())
-                ).length : allAccounts.length
-              } accounts
-              {filteredAccounts.length === 50 && <span className="ml-1">(limited to 50 results - refine search for more)</span>}
-            </div>
-          )}
-        </div>
+              {error && (
+                <div className="p-4 bg-red-500/10 border border-red-500/50 text-red-400 rounded-lg">
+                  {error}
+                </div>
+              )}
 
-        {/* Footer with tips */}
-        <div className="p-4 border-t border-gray-700/50 bg-gray-800/30 flex-shrink-0">
-          <div className="flex items-start space-x-2 text-sm text-gray-400">
-            <span>💡</span>
-            <div>
-              <p><strong className="text-gray-300">Green checkmark</strong> = Already on a promo (click Edit to change)</p>
-              <p className="mt-1"><strong className="text-gray-300">Blue Assign</strong> = Not on a promo yet (click to add)</p>
-            </div>
-          </div>
+              {/* Promo Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Select Promo <span className="text-red-400">*</span>
+                </label>
+                <select
+                  value={selectedPromo}
+                  onChange={handlePromoChange}
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Choose a promo...</option>
+                  {promos.map((promo) => (
+                    <option key={promo.id} value={promo.id}>
+                      {promo.promo_name} - {promo.discount}% off
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Target Units */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Target Units <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={targetUnits}
+                  onChange={(e) => setTargetUnits(e.target.value)}
+                  min="1"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter target units"
+                  required
+                />
+              </div>
+
+              {/* Payment Terms */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Payment Terms
+                </label>
+                <select
+                  value={terms}
+                  onChange={(e) => setTerms(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">No terms</option>
+                  <option value="30/60/90">30/60/90</option>
+                  <option value="30/60/90/120">30/60/90/120</option>
+                  <option value="30/60/90/120/150">30/60/90/120/150</option>
+                </select>
+              </div>
+
+              {/* Initial Units */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Initial Units <span className="text-gray-500">(optional)</span>
+                </label>
+                <input
+                  type="number"
+                  value={initialUnits}
+                  onChange={(e) => setInitialUnits(e.target.value)}
+                  min="0"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Log starting units (optional)"
+                />
+                <p className="mt-1 text-xs text-gray-500">Already have units sold? Add them now.</p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="flex-1 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg transition"
+                >
+                  ← Back
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition shadow-lg shadow-blue-600/30"
+                >
+                  {submitting ? (
+                    <span className="flex items-center justify-center space-x-2">
+                      <span className="animate-spin">⏳</span>
+                      <span>Saving...</span>
+                    </span>
+                  ) : (
+                    'Assign Promo'
+                  )}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
     </div>
