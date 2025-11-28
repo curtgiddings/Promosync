@@ -266,6 +266,17 @@ const Dashboard = () => {
     }
     
     return matchesSearch && matchesTerritory && matchesStatus
+  }).sort((a, b) => {
+    // Sort by most behind pace first
+    const progressA = accountProgress[a.id]?.progress || 0
+    const progressB = accountProgress[b.id]?.progress || 0
+    
+    // Calculate how far behind pace each account is (negative = behind)
+    const behindA = progressA - quarterProgress
+    const behindB = progressB - quarterProgress
+    
+    // Sort: most behind first (lowest behindA value first)
+    return behindA - behindB
   })
 
   const exportToCSV = async (territory = 'all') => {
