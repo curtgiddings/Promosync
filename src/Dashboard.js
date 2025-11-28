@@ -47,6 +47,7 @@ const Dashboard = () => {
   const [activeQuarter, setActiveQuarter] = useState(null)
   const [quarterProgress, setQuarterProgress] = useState(50) // Percentage through quarter
   const [showPace, setShowPace] = useState(false) // Toggle pace indicators
+  const [activityRefreshKey, setActivityRefreshKey] = useState(0) // To trigger ActivityFeed refresh
   
   // Toast notifications
   const [toasts, setToasts] = useState([])
@@ -345,6 +346,7 @@ const Dashboard = () => {
 
   const handleRefresh = () => {
     fetchAccounts()
+    setActivityRefreshKey(prev => prev + 1) // Trigger ActivityFeed refresh
     showToast('Refreshed!', 'success')
   }
 
@@ -706,7 +708,7 @@ const Dashboard = () => {
 
         {/* Activity Feed - Below accounts on desktop, hidden on mobile */}
         <div className="hidden lg:block mt-8">
-          <ActivityFeed limit={10} />
+          <ActivityFeed key={activityRefreshKey} limit={10} />
         </div>
       </main>
 
