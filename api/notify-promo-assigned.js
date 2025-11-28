@@ -18,7 +18,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const { accountId, accountName, territory, promoName, targetUnits } = req.body
+  const { accountId, accountName, territory, promoName, targetUnits, terms, assignedBy } = req.body
 
   if (!accountId || !territory) {
     return res.status(400).json({ error: 'Missing accountId or territory' })
@@ -54,25 +54,48 @@ export default async function handler(req, res) {
     // Send emails
     const emailPromises = repsToNotify.map(async (rep) => {
       const html = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #1e40af, #3b82f6); padding: 20px; border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0;">🎯 New Promo Assignment</h1>
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc;">
+          <div style="background: linear-gradient(135deg, #1e40af, #3b82f6); padding: 32px 24px; border-radius: 12px 12px 0 0; text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 8px;">🎯</div>
+            <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600;">New Promo Assignment</h1>
           </div>
-          <div style="background: #f8fafc; padding: 20px; border: 1px solid #e2e8f0;">
-            <p style="color: #334155; font-size: 16px;">Hi ${rep.name},</p>
-            <p style="color: #334155; font-size: 16px;">A new account in your territory has been assigned to a promo:</p>
+          <div style="background: white; padding: 32px 24px; border: 1px solid #e2e8f0; border-top: none;">
+            <p style="color: #334155; font-size: 16px; margin: 0 0 24px 0;">Hi ${rep.name},</p>
+            <p style="color: #334155; font-size: 16px; margin: 0 0 24px 0;">A new account in your territory has been assigned to a promo:</p>
             
-            <div style="background: white; border-radius: 8px; padding: 16px; margin: 16px 0; border-left: 4px solid #3b82f6;">
-              <p style="margin: 0 0 8px 0;"><strong style="color: #1e40af;">Account:</strong> ${accountName}</p>
-              <p style="margin: 0 0 8px 0;"><strong style="color: #1e40af;">Territory:</strong> ${territory}</p>
-              <p style="margin: 0 0 8px 0;"><strong style="color: #1e40af;">Promo:</strong> ${promoName}</p>
-              <p style="margin: 0;"><strong style="color: #1e40af;">Target:</strong> ${targetUnits} units</p>
+            <div style="background: #f8fafc; border-radius: 12px; padding: 20px; margin: 0 0 24px 0; border-left: 4px solid #3b82f6;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 8px 0; color: #64748b; font-size: 14px; width: 100px;">Account</td>
+                  <td style="padding: 8px 0; color: #1e293b; font-size: 14px; font-weight: 600;">${accountName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Territory</td>
+                  <td style="padding: 8px 0; color: #1e293b; font-size: 14px;">${territory}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Promo</td>
+                  <td style="padding: 8px 0; color: #1e293b; font-size: 14px; font-weight: 600;">${promoName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Target</td>
+                  <td style="padding: 8px 0; color: #1e293b; font-size: 14px;">${targetUnits} units</td>
+                </tr>
+                ${terms ? `<tr>
+                  <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Terms</td>
+                  <td style="padding: 8px 0; color: #1e293b; font-size: 14px;">${terms}</td>
+                </tr>` : ''}
+                ${assignedBy ? `<tr>
+                  <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Assigned by</td>
+                  <td style="padding: 8px 0; color: #1e293b; font-size: 14px;">${assignedBy}</td>
+                </tr>` : ''}
+              </table>
             </div>
             
-            <a href="https://promosync.io" style="display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;">View in PromoSync</a>
+            <a href="https://promosync.io" style="display: inline-block; background: linear-gradient(135deg, #1e40af, #3b82f6); color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">View in PromoSync</a>
           </div>
-          <div style="background: #1e293b; padding: 16px; border-radius: 0 0 10px 10px; text-align: center;">
-            <p style="color: #94a3b8; margin: 0; font-size: 12px;">PromoSync • Sales Promo Tracking</p>
+          <div style="background: #1e293b; padding: 20px 24px; border-radius: 0 0 12px 12px; text-align: center;">
+            <p style="color: #94a3b8; margin: 0; font-size: 13px;">PromoSync • Sales Promo Tracking</p>
           </div>
         </div>
       `
