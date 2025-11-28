@@ -2,12 +2,10 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 
 /**
- * AddAccountModal v3 Component
+ * AddAccountModal Component
  * 
- * Enhanced with:
- * - 5 SY promos (two SY350 variants)
- * - 30/60/90/120/150 terms option
- * - Discount display
+ * Allows reps to create new accounts on-the-fly
+ * from the QuickEntry search dropdown.
  */
 
 const AddAccountModal = ({ accountName, onClose, onSuccess }) => {
@@ -18,18 +16,12 @@ const AddAccountModal = ({ accountName, onClose, onSuccess }) => {
   const [selectedPromo, setSelectedPromo] = useState('')
   const [targetUnits, setTargetUnits] = useState('')
   const [terms, setTerms] = useState('')
+  const [initialUnits, setInitialUnits] = useState('')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  const territories = ['Kelowna', 'Richmond', 'Vancouver']
-  
-  const termsOptions = [
-    { value: 'No terms', label: 'No terms' },
-    { value: '30/60/90', label: '30/60/90' },
-    { value: '30/60/90/120', label: '30/60/90/120' },
-    { value: '30/60/90/120/150', label: '30/60/90/120/150' }
-  ]
+  const territories = ['Richmond', 'Vancouver', 'Kelowna']
 
   useEffect(() => {
     fetchPromos()
@@ -41,8 +33,7 @@ const AddAccountModal = ({ accountName, onClose, onSuccess }) => {
         .from('promos')
         .select('*')
         .eq('is_active', true)
-        .order('default_target')
-        .order('discount', { ascending: false })
+        .order('start_date', { ascending: false })
 
       if (error) throw error
       setPromos(data || [])
@@ -51,7 +42,6 @@ const AddAccountModal = ({ accountName, onClose, onSuccess }) => {
       if (data && data.length > 0) {
         setSelectedPromo(data[0].id)
         setTargetUnits(data[0].default_target)
-        setTerms(data[0].terms || '')
       }
     } catch (err) {
       console.error('Error fetching promos:', err)
@@ -67,7 +57,9 @@ const AddAccountModal = ({ accountName, onClose, onSuccess }) => {
     const promo = promos.find(p => p.id === promoId)
     if (promo) {
       setTargetUnits(promo.default_target)
-      setTerms(promo.terms || '')
+      if (promo.terms) {
+        setTerms(promo.terms)
+      }
     }
   }
 
@@ -79,8 +71,8 @@ const AddAccountModal = ({ accountName, onClose, onSuccess }) => {
       return
     }
 
-    if (assignToPromo && (!selectedPromo || !targetUnits || !terms)) {
-      setError('Please select a promo, target units, and terms')
+    if (assignToPromo && (!selectedPromo || !targetUnits)) {
+      setError('Please select a promo and enter target units')
       return
     }
 
@@ -108,10 +100,22 @@ const AddAccountModal = ({ accountName, onClose, onSuccess }) => {
             account_id: newAccount.id,
             promo_id: selectedPromo,
             target_units: parseInt(targetUnits),
-            terms: terms
+            terms: terms || null,
+            assigned_date: new Date().toISOString()
           })
 
         if (assignError) throw assignError
+
+        // Create initial units transaction if provided
+        if (initialUnits && parseInt(initialUnits) > 0) {
+          await supabase
+            .from('transactions')
+            .insert({
+              account_id: newAccount.id,
+              units_sold: parseInt(initialUnits),
+              notes: 'Initial units on promo assignment'
+            })
+        }
       }
 
       // Success!
@@ -127,7 +131,7 @@ const AddAccountModal = ({ accountName, onClose, onSuccess }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-800 rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+      <div className="bg-gray-800 rounded-lg max-w-md w-full p-6">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-white flex items-center space-x-2">
@@ -219,7 +223,7 @@ const AddAccountModal = ({ accountName, onClose, onSuccess }) => {
                       <option value="">Choose a promo...</option>
                       {promos.map((promo) => (
                         <option key={promo.id} value={promo.id}>
-                          {promo.promo_name} - {promo.discount}% ({promo.default_target} units)
+                          {promo.promo_name} ({promo.promo_code})
                         </option>
                       ))}
                     </select>
@@ -241,24 +245,37 @@ const AddAccountModal = ({ accountName, onClose, onSuccess }) => {
                     />
                   </div>
 
-                  {/* Billing Terms */}
+                  {/* Payment Terms */}
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Billing Terms <span className="text-red-500">*</span>
+                      Payment Terms
                     </label>
                     <select
                       value={terms}
                       onChange={(e) => setTerms(e.target.value)}
                       className="w-full px-4 py-3 bg-gray-600 border border-gray-500 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required={assignToPromo}
                     >
-                      <option value="">Choose terms...</option>
-                      {termsOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
+                      <option value="">No terms</option>
+                      <option value="30/60/90">30/60/90</option>
+                      <option value="30/60/90/120">30/60/90/120</option>
+                      <option value="30/60/90/120/150">30/60/90/120/150</option>
                     </select>
+                  </div>
+
+                  {/* Initial Units */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Initial Units <span className="text-gray-500">(optional)</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={initialUnits}
+                      onChange={(e) => setInitialUnits(e.target.value)}
+                      min="0"
+                      className="w-full px-4 py-3 bg-gray-600 border border-gray-500 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Log starting units (optional)"
+                    />
+                    <p className="mt-1 text-xs text-gray-400">Already have units sold? Add them now.</p>
                   </div>
                 </>
               )}
@@ -286,7 +303,7 @@ const AddAccountModal = ({ accountName, onClose, onSuccess }) => {
 
         {/* Help Text */}
         <div className="mt-4 text-sm text-gray-500">
-          <p>💡 Choose between two SY350 options: 10% (4 terms) or 8% (5 terms)</p>
+          <p>💡 Tip: You can assign this account to a promo later if needed.</p>
         </div>
       </div>
     </div>
