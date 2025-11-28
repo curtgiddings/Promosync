@@ -538,28 +538,44 @@ const Dashboard = () => {
             </div>
 
             {/* View Toggle */}
-            <div className="flex bg-gray-700/50 rounded-lg p-1 border border-gray-600/50">
+            <div className="flex items-center gap-2">
+              <div className="flex bg-gray-700/50 rounded-lg p-1 border border-gray-600/50">
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-4 py-2 rounded-md font-medium transition flex items-center space-x-2 ${
+                    viewMode === 'list'
+                      ? 'bg-blue-600 text-white shadow-lg'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <span>☰</span>
+                  <span className="hidden sm:inline">List</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('card')}
+                  className={`px-4 py-2 rounded-md font-medium transition flex items-center space-x-2 ${
+                    viewMode === 'card'
+                      ? 'bg-blue-600 text-white shadow-lg'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <span>▦</span>
+                  <span className="hidden sm:inline">Cards</span>
+                </button>
+              </div>
+              
+              {/* Show Pace Toggle */}
               <button
-                onClick={() => setViewMode('list')}
-                className={`px-4 py-2 rounded-md font-medium transition flex items-center space-x-2 ${
-                  viewMode === 'list'
-                    ? 'bg-blue-600 text-white shadow-lg'
-                    : 'text-gray-400 hover:text-white'
+                onClick={() => setShowPace(!showPace)}
+                className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center space-x-1.5 ${
+                  showPace
+                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
+                    : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700 border border-gray-600/50'
                 }`}
+                title="Show pace comparison vs quarter timeline"
               >
-                <span>☰</span>
-                <span className="hidden sm:inline">List</span>
-              </button>
-              <button
-                onClick={() => setViewMode('card')}
-                className={`px-4 py-2 rounded-md font-medium transition flex items-center space-x-2 ${
-                  viewMode === 'card'
-                    ? 'bg-blue-600 text-white shadow-lg'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                <span>▦</span>
-                <span className="hidden sm:inline">Cards</span>
+                <span>📊</span>
+                <span className="hidden sm:inline">Pace</span>
               </button>
             </div>
           </div>
@@ -608,23 +624,6 @@ const Dashboard = () => {
             >
               <span>🟢</span>
               <span>Target Met</span>
-            </button>
-            
-            {/* Divider */}
-            <div className="hidden sm:block w-px h-8 bg-gray-600/50 mx-1"></div>
-            
-            {/* Show Pace Toggle */}
-            <button
-              onClick={() => setShowPace(!showPace)}
-              className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center space-x-1.5 ${
-                showPace
-                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
-                  : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700 border border-gray-600/50'
-              }`}
-              title="Show pace comparison vs quarter timeline"
-            >
-              <span>📊</span>
-              <span className="hidden sm:inline">Show Pace</span>
             </button>
           </div>
 
