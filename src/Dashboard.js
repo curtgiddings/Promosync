@@ -11,6 +11,7 @@ import AddAccountModal from './AddAccountModal'
 import ActivityFeed from './ActivityFeed'
 import QuarterManagement from './QuarterManagement'
 import AccountNotes from './AccountNotes'
+import NotificationSettings from './NotificationSettings'
 import Toast from './Toast'
 
 const Dashboard = () => {
@@ -37,6 +38,7 @@ const Dashboard = () => {
   const [showAddAccount, setShowAddAccount] = useState(false)
   const [showQuarterManagement, setShowQuarterManagement] = useState(false)
   const [showAccountNotes, setShowAccountNotes] = useState(false)
+  const [showNotificationSettings, setShowNotificationSettings] = useState(false)
   const [newAccountName, setNewAccountName] = useState('')
   const [selectedAccount, setSelectedAccount] = useState(null)
   const [selectedAccountPromo, setSelectedAccountPromo] = useState(null)
@@ -44,6 +46,7 @@ const Dashboard = () => {
   // Quarter data
   const [activeQuarter, setActiveQuarter] = useState(null)
   const [quarterProgress, setQuarterProgress] = useState(50) // Percentage through quarter
+  const [showPace, setShowPace] = useState(false) // Toggle pace indicators
   
   // Toast notifications
   const [toasts, setToasts] = useState([])
@@ -251,7 +254,10 @@ const Dashboard = () => {
     let matchesStatus = true
     if (statusFilter !== 'all') {
       const progress = accountProgress[account.id]?.progress || 0
-      if (statusFilter === 'behind') {
+      if (statusFilter === 'needs_attention') {
+        // Behind pace: progress is more than 10% behind quarter progress
+        matchesStatus = progress < 100 && progress < (quarterProgress - 10)
+      } else if (statusFilter === 'behind') {
         matchesStatus = progress >= 0 && progress < 75
       } else if (statusFilter === 'ontrack') {
         matchesStatus = progress >= 75 && progress < 100
@@ -384,6 +390,16 @@ const Dashboard = () => {
                   </span>
                 </>
               )}
+              
+              {/* Notification Settings */}
+              <button
+                onClick={() => setShowNotificationSettings(true)}
+                className="p-2 bg-gray-700/80 hover:bg-gray-600 text-white rounded-lg transition"
+                title="Notification Settings"
+              >
+                🔔
+              </button>
+              
               <button
                 onClick={signOut}
                 className="px-4 py-2 bg-gray-700/80 hover:bg-gray-600 text-white rounded-lg transition font-medium text-sm"
@@ -550,7 +566,7 @@ const Dashboard = () => {
           </div>
 
           {/* Status Filter Buttons */}
-          <div className="flex flex-wrap gap-2 mb-4">
+          <div className="flex flex-wrap items-center gap-2 mb-4">
             <button
               onClick={() => setStatusFilter('all')}
               className={`px-4 py-2 rounded-lg font-medium transition-all ${
@@ -560,6 +576,17 @@ const Dashboard = () => {
               }`}
             >
               All Accounts
+            </button>
+            <button
+              onClick={() => setStatusFilter('needs_attention')}
+              className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center space-x-1.5 ${
+                statusFilter === 'needs_attention'
+                  ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/30'
+                  : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700 border border-gray-600/50'
+              }`}
+            >
+              <span>⚠️</span>
+              <span>Needs Attention</span>
             </button>
             <button
               onClick={() => setStatusFilter('behind')}
@@ -593,6 +620,23 @@ const Dashboard = () => {
             >
               <span>🟢</span>
               <span>Target Met</span>
+            </button>
+            
+            {/* Divider */}
+            <div className="hidden sm:block w-px h-8 bg-gray-600/50 mx-1"></div>
+            
+            {/* Show Pace Toggle */}
+            <button
+              onClick={() => setShowPace(!showPace)}
+              className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center space-x-1.5 ${
+                showPace
+                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
+                  : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700 border border-gray-600/50'
+              }`}
+              title="Show pace comparison vs quarter timeline"
+            >
+              <span>📊</span>
+              <span className="hidden sm:inline">Show Pace</span>
             </button>
           </div>
 
@@ -645,6 +689,8 @@ const Dashboard = () => {
               setSelectedAccount(account)
               setShowAccountNotes(true)
             }}
+            showPace={showPace}
+            quarterProgress={quarterProgress}
           />
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -766,6 +812,13 @@ const Dashboard = () => {
             setShowAccountNotes(false)
             setSelectedAccount(null)
           }}
+        />
+      )}
+
+      {/* Notification Settings Modal */}
+      {showNotificationSettings && (
+        <NotificationSettings
+          onClose={() => setShowNotificationSettings(false)}
         />
       )}
     </div>
