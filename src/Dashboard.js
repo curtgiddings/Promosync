@@ -759,10 +759,10 @@ const Dashboard = () => {
       {showAddToPromo && (
         <AddAccountToPromo
           onClose={() => setShowAddToPromo(false)}
-          onAssign={(account, promoData) => {
-            setSelectedAccount(account)
-            setSelectedAccountPromo(promoData)
-            setShowAssignPromo(true)
+          onSuccess={() => {
+            setShowAddToPromo(false)
+            handleRefresh()
+            showToast('Account added to promo!', 'success')
           }}
           onAddNew={(accountName) => {
             setNewAccountName(accountName)
