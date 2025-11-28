@@ -1,10 +1,11 @@
 import React from 'react'
 
 /**
- * AccountListView - Mobile Optimized
+ * AccountListView - Mobile Optimized with Optional Pace Indicator
  * 
  * Desktop: Full table view
  * Mobile: Card-based layout
+ * Optional: Pace indicator when showPace is enabled
  */
 
 const AccountListView = ({ 
@@ -12,7 +13,9 @@ const AccountListView = ({
   accountProgress, 
   onAssignPromo, 
   onQuickLog,
-  onViewNotes
+  onViewNotes,
+  showPace = false,
+  quarterProgress = 50
 }) => {
 
   const getStatusColor = (progress) => {
@@ -34,6 +37,21 @@ const AccountListView = ({
     if (progress >= 75) return 'bg-yellow-500'
     if (progress >= 50) return 'bg-orange-500'
     return 'bg-red-500'
+  }
+
+  // Calculate pace status
+  const getPaceInfo = (progress) => {
+    const diff = progress - quarterProgress
+    
+    if (progress >= 100) {
+      return { label: 'Met', color: 'text-green-400', bg: 'bg-green-500/20' }
+    } else if (diff >= 10) {
+      return { label: `+${Math.round(diff)}%`, color: 'text-green-400', bg: 'bg-green-500/20' }
+    } else if (diff >= -10) {
+      return { label: 'On Pace', color: 'text-blue-400', bg: 'bg-blue-500/20' }
+    } else {
+      return { label: `${Math.round(diff)}%`, color: 'text-red-400', bg: 'bg-red-500/20' }
+    }
   }
 
   return (
@@ -64,6 +82,7 @@ const AccountListView = ({
               const progressData = accountProgress[account.id] || { progress: 0, units_sold: 0 }
               const progress = progressData.progress || 0
               const unitsSold = progressData.units_sold || account.units_sold || 0
+              const paceInfo = getPaceInfo(progress)
               
               return (
                 <div 
@@ -74,9 +93,16 @@ const AccountListView = ({
                   <div className="col-span-3">
                     <div className="flex items-center space-x-2">
                       <span className="text-lg">🏢</span>
-                      <span className="font-semibold text-white truncate">
-                        {account.account_name}
-                      </span>
+                      <div className="min-w-0">
+                        <span className="font-semibold text-white truncate block">
+                          {account.account_name}
+                        </span>
+                        {showPace && (
+                          <span className={`text-xs px-1.5 py-0.5 rounded ${paceInfo.bg} ${paceInfo.color}`}>
+                            {paceInfo.label}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -172,6 +198,7 @@ const AccountListView = ({
             const progressData = accountProgress[account.id] || { progress: 0, units_sold: 0 }
             const progress = progressData.progress || 0
             const unitsSold = progressData.units_sold || account.units_sold || 0
+            const paceInfo = getPaceInfo(progress)
             
             return (
               <div 
@@ -187,9 +214,16 @@ const AccountListView = ({
                         {account.account_name}
                       </h3>
                     </div>
-                    <p className="text-gray-400 text-sm">
-                      📍 {account.territory}
-                    </p>
+                    <div className="flex items-center space-x-2">
+                      <p className="text-gray-400 text-sm">
+                        📍 {account.territory}
+                      </p>
+                      {showPace && (
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${paceInfo.bg} ${paceInfo.color}`}>
+                          {paceInfo.label}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <span className={`ml-2 font-bold text-lg whitespace-nowrap ${getStatusColor(progress)}`}>
                     {getStatusIcon(progress)} {progress}%
