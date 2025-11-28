@@ -126,7 +126,9 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
               accountName: account.account_name,
               territory: account.territory,
               promoName: promos.find(p => p.id === selectedPromo)?.promo_name,
-              targetUnits: parseInt(targetUnits)
+              targetUnits: parseInt(targetUnits),
+              terms: terms || null,
+              assignedBy: user?.name || user?.email || 'Unknown'
             })
           })
         } catch (e) {
