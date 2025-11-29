@@ -42,6 +42,7 @@ const AddAccountModal = ({ accountName, onClose, onSuccess }) => {
       if (data && data.length > 0) {
         setSelectedPromo(data[0].id)
         setTargetUnits(data[0].default_target)
+        setTerms(data[0].terms || '')
       }
     } catch (err) {
       console.error('Error fetching promos:', err)
@@ -54,10 +55,10 @@ const AddAccountModal = ({ accountName, onClose, onSuccess }) => {
     const promoId = e.target.value
     setSelectedPromo(promoId)
     
-    const promo = promos.find(p => p.id === promoId)
+    const promo = promos.find(p => String(p.id) === String(promoId))
     if (promo) {
       setTargetUnits(promo.default_target)
-      setTerms(promo.terms || '') // Always set from promo
+      setTerms(promo.terms || '')
     }
   }
 
