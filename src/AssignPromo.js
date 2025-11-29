@@ -182,7 +182,7 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
     setSelectedPromo(promoId)
     
     // Auto-fill default target and terms based on promo
-    const selectedPromoData = promos.find(p => p.id === promoId)
+    const selectedPromoData = promos.find(p => String(p.id) === String(promoId))
     if (selectedPromoData) {
       // Extract target from promo name (e.g., "SY125" -> 125)
       const match = selectedPromoData.promo_name.match(/\d+/)
@@ -191,9 +191,7 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
       }
       
       // Always auto-fill terms from promo
-      if (selectedPromoData.terms) {
-        setTerms(selectedPromoData.terms)
-      }
+      setTerms(selectedPromoData.terms || '')
     }
   }
 
