@@ -1,133 +1,100 @@
-import React from 'react'
+import { useState } from 'react'
 
-/**
- * AccountListView - Mobile Optimized with Optional Pace Indicator
- * 
- * Desktop: Full table view
- * Mobile: Card-based layout
- * Optional: Pace indicator when showPace is enabled
- */
-
-const AccountListView = ({ 
-  accounts, 
-  accountProgress, 
-  onAssignPromo, 
-  onQuickLog,
-  onViewNotes,
-  showPace = false,
-  quarterProgress = 50
-}) => {
+function AccountListView({ accounts, accountProgress, onAssignPromo, onQuickLog, onViewNotes, onViewRepBreakdown }) {
+  
+  const getProgress = (account) => {
+    const progress = accountProgress[account.id]
+    if (!progress) return 0
+    const target = progress.target_units || 0
+    const units = progress.units_sold || 0
+    if (target === 0) return 0
+    return Math.round((units / target) * 100)
+  }
 
   const getStatusColor = (progress) => {
     if (progress >= 100) return 'text-green-400'
-    if (progress >= 75) return 'text-yellow-400'
-    if (progress >= 50) return 'text-orange-400'
+    if (progress >= 75) return 'text-blue-400'
+    if (progress >= 50) return 'text-yellow-400'
     return 'text-red-400'
   }
 
   const getStatusIcon = (progress) => {
-    if (progress >= 100) return '🟢'
-    if (progress >= 75) return '🟡'
-    if (progress >= 50) return '🟠'
+    if (progress >= 100) return '✅'
+    if (progress >= 75) return '🔵'
+    if (progress >= 50) return '🟡'
     return '🔴'
   }
 
   const getProgressBarColor = (progress) => {
     if (progress >= 100) return 'bg-green-500'
-    if (progress >= 75) return 'bg-yellow-500'
-    if (progress >= 50) return 'bg-orange-500'
+    if (progress >= 75) return 'bg-blue-500'
+    if (progress >= 50) return 'bg-yellow-500'
     return 'bg-red-500'
   }
 
-  // Calculate pace status
-  const getPaceInfo = (progress) => {
-    const diff = progress - quarterProgress
-    
-    if (progress >= 100) {
-      return { label: 'Met ✓', color: 'text-green-400', bg: 'bg-green-500/20' }
-    } else if (diff >= -10) {
-      // Within 10% of quarter progress = On Pace
-      return { label: 'On Pace', color: 'text-blue-400', bg: 'bg-blue-500/20' }
-    } else {
-      // More than 10% behind = Behind Pace (show the gap)
-      return { label: `${Math.round(diff)}%`, color: 'text-red-400', bg: 'bg-red-500/20' }
-    }
+  // Truncate notes for display
+  const truncateNotes = (notes, maxLength = 50) => {
+    if (!notes) return ''
+    if (notes.length <= maxLength) return notes
+    return notes.substring(0, maxLength) + '...'
   }
 
   return (
-    <>
+    <div className="space-y-4">
       {/* Desktop: Table View (hidden on mobile) */}
-      <div className="hidden md:block bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl overflow-hidden">
-        {/* Table Header */}
-        <div className="bg-gray-900/50 border-b border-gray-700/50">
-          <div className="grid grid-cols-12 gap-4 px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+      <div className="hidden md:block overflow-x-auto">
+        <div className="min-w-full">
+          {/* Header */}
+          <div className="grid grid-cols-12 gap-4 px-4 py-2 bg-gray-700 rounded-t-lg text-sm font-medium text-gray-300">
             <div className="col-span-3">Account</div>
-            <div className="col-span-2">Territory</div>
+            <div className="col-span-1">Territory</div>
             <div className="col-span-2">Promo</div>
-            <div className="col-span-3">Progress</div>
+            <div className="col-span-2">Progress</div>
+            <div className="col-span-2">Notes</div>
             <div className="col-span-2 text-right">Actions</div>
           </div>
-        </div>
 
-        {/* Table Body */}
-        <div className="divide-y divide-gray-700/50">
+          {/* Rows */}
           {accounts.length === 0 ? (
-            <div className="px-6 py-12 text-center">
-              <span className="text-4xl block mb-3">📭</span>
-              <p className="text-gray-400">No accounts on promos</p>
-              <p className="text-gray-500 text-sm mt-1">Assign accounts to promos to see them here</p>
+            <div className="px-4 py-8 text-center text-gray-500">
+              No accounts found
             </div>
           ) : (
-            accounts.map((account) => {
-              const progressData = accountProgress[account.id] || { progress: 0, units_sold: 0 }
-              const progress = progressData.progress || 0
-              const unitsSold = progressData.units_sold || account.units_sold || 0
-              const paceInfo = getPaceInfo(progress)
-              
+            accounts.map(account => {
+              const progress = getProgress(account)
+              const progressData = accountProgress[account.id]
+              const isNoTarget = progressData?.no_target || false
+              const hasNotes = account.notes && account.notes.trim().length > 0
+
               return (
-                <div 
+                <div
                   key={account.id}
-                  className="grid grid-cols-12 gap-4 px-6 py-4 hover:bg-gray-700/30 transition-colors items-center"
+                  className="grid grid-cols-12 gap-4 px-4 py-3 border-b border-gray-700 hover:bg-gray-750 items-center cursor-pointer transition"
+                  onClick={() => onViewRepBreakdown && onViewRepBreakdown(account, account.promoData)}
                 >
-                  {/* Account Name */}
+                  {/* Account Name & Number */}
                   <div className="col-span-3">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-lg">🏢</span>
-                      <div className="min-w-0">
-                        <span className="font-semibold text-white truncate block">
-                          {account.account_name}
-                        </span>
-                        {showPace && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded ${paceInfo.bg} ${paceInfo.color}`}>
-                            {paceInfo.label}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                    <div className="font-medium text-white">{account.account_name}</div>
+                    {account.account_number && (
+                      <div className="text-xs text-gray-500">#{account.account_number}</div>
+                    )}
                   </div>
 
                   {/* Territory */}
-                  <div className="col-span-2">
-                    <span className="text-gray-300 text-sm">
-                      📍 {account.territory}
-                    </span>
+                  <div className="col-span-1 text-gray-400 text-sm">
+                    {account.territory || '-'}
                   </div>
 
-                  {/* Promo Info */}
+                  {/* Promo */}
                   <div className="col-span-2">
                     {account.promo_name ? (
                       <div>
-                        <div className="font-medium text-white">
+                        <div className="font-medium text-white text-sm">
                           {account.promo_name}
                         </div>
                         {account.discount && (
                           <div className="text-xs text-green-400">
                             {account.discount}% off
-                          </div>
-                        )}
-                        {account.terms && (
-                          <div className="text-xs text-gray-500">
-                            {account.terms}
                           </div>
                         )}
                       </div>
@@ -137,27 +104,57 @@ const AccountListView = ({
                   </div>
 
                   {/* Progress */}
-                  <div className="col-span-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-300">
-                          {unitsSold} / {account.target_units || 0}
-                        </span>
-                        <span className={`font-bold ${getStatusColor(progress)}`}>
-                          {getStatusIcon(progress)} {progress}%
-                        </span>
+                  <div className="col-span-2">
+                    {account.promo_name ? (
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-300">
+                            {account.units_sold || 0}
+                            {!isNoTarget && ` / ${account.target_units || 0}`}
+                          </span>
+                          {!isNoTarget && (
+                            <span className={`font-bold ${getStatusColor(progress)}`}>
+                              {getStatusIcon(progress)} {progress}%
+                            </span>
+                          )}
+                          {isNoTarget && (
+                            <span className="text-purple-400">🎁</span>
+                          )}
+                        </div>
+                        {!isNoTarget && (
+                          <div className="w-full bg-gray-700 rounded-full h-2">
+                            <div
+                              className={`h-full ${getProgressBarColor(progress)} rounded-full transition-all duration-300`}
+                              style={{ width: `${Math.min(progress, 100)}%` }}
+                            />
+                          </div>
+                        )}
                       </div>
-                      <div className="w-full bg-gray-700 rounded-full h-2">
-                        <div
-                          className={`h-full ${getProgressBarColor(progress)} rounded-full transition-all duration-300`}
-                          style={{ width: `${Math.min(progress, 100)}%` }}
-                        />
+                    ) : (
+                      <span className="text-gray-500 text-sm">-</span>
+                    )}
+                  </div>
+
+                  {/* Notes Preview */}
+                  <div className="col-span-2">
+                    {hasNotes ? (
+                      <div 
+                        className="text-sm text-gray-400 truncate cursor-pointer hover:text-gray-300"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (onViewNotes) onViewNotes(account)
+                        }}
+                        title={account.notes}
+                      >
+                        📝 {truncateNotes(account.notes)}
                       </div>
-                    </div>
+                    ) : (
+                      <span className="text-gray-600 text-sm">-</span>
+                    )}
                   </div>
 
                   {/* Actions */}
-                  <div className="col-span-2 flex justify-end space-x-2">
+                  <div className="col-span-2 flex justify-end space-x-2" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => onQuickLog(account, account.promoData)}
                       className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded transition"
@@ -166,7 +163,7 @@ const AccountListView = ({
                     </button>
                     <button
                       onClick={() => onViewNotes && onViewNotes(account)}
-                      className="px-2 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition"
+                      className="px-2 py-1.5 bg-gray-600 hover:bg-gray-500 text-white text-sm rounded transition"
                       title="Notes"
                     >
                       💬
@@ -188,104 +185,96 @@ const AccountListView = ({
       {/* Mobile: Card View (visible only on mobile) */}
       <div className="md:hidden space-y-4">
         {accounts.length === 0 ? (
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-8 text-center">
-            <span className="text-4xl block mb-3">📭</span>
-            <p className="text-gray-400">No accounts on promos</p>
-            <p className="text-gray-500 text-sm mt-1">Assign accounts to promos to see them here</p>
-          </div>
+          <div className="text-center text-gray-500 py-8">No accounts found</div>
         ) : (
-          accounts.map((account) => {
-            const progressData = accountProgress[account.id] || { progress: 0, units_sold: 0 }
-            const progress = progressData.progress || 0
-            const unitsSold = progressData.units_sold || account.units_sold || 0
-            const paceInfo = getPaceInfo(progress)
-            
+          accounts.map(account => {
+            const progress = getProgress(account)
+            const progressData = accountProgress[account.id]
+            const isNoTarget = progressData?.no_target || false
+            const hasNotes = account.notes && account.notes.trim().length > 0
+
             return (
-              <div 
+              <div
                 key={account.id}
-                className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-4"
+                className="bg-gray-800 rounded-lg p-4 cursor-pointer"
+                onClick={() => onViewRepBreakdown && onViewRepBreakdown(account, account.promoData)}
               >
-                {/* Account Header */}
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <span className="text-lg">🏢</span>
-                      <h3 className="font-semibold text-white truncate">
-                        {account.account_name}
-                      </h3>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <p className="text-gray-400 text-sm">
-                        📍 {account.territory}
-                      </p>
-                      {showPace && (
-                        <span className={`text-xs px-1.5 py-0.5 rounded ${paceInfo.bg} ${paceInfo.color}`}>
-                          {paceInfo.label}
-                        </span>
+                {/* Header */}
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h3 className="text-white font-semibold">{account.account_name}</h3>
+                    <div className="flex items-center space-x-2 text-sm text-gray-400">
+                      {account.account_number && (
+                        <span className="text-gray-500">#{account.account_number}</span>
+                      )}
+                      {account.territory && (
+                        <span>📍 {account.territory}</span>
                       )}
                     </div>
                   </div>
-                  <span className={`ml-2 font-bold text-lg whitespace-nowrap ${getStatusColor(progress)}`}>
-                    {getStatusIcon(progress)} {progress}%
+                  <span className="text-2xl">
+                    {isNoTarget ? '🎁' : getStatusIcon(progress)}
                   </span>
                 </div>
 
-                {/* Promo Info */}
-                {account.promo_name && (
-                  <div className="mb-3 pb-3 border-b border-gray-700/50">
-                    <div className="font-medium text-white mb-1">
-                      {account.promo_name}
-                      {account.discount && (
-                        <span className="ml-2 text-sm text-green-400">
-                          ({account.discount}% off)
-                        </span>
+                {/* Promo & Progress */}
+                {account.promo_name ? (
+                  <div className="mb-3">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-blue-400 text-sm">{account.promo_name}</span>
+                      {!isNoTarget && (
+                        <span className="text-white text-sm font-bold">{progress}%</span>
                       )}
                     </div>
-                    {account.terms && (
-                      <div className="text-xs text-gray-500">
-                        Terms: {account.terms}
+                    <div className="text-gray-400 text-sm mb-2">
+                      {account.units_sold || 0}{!isNoTarget && ` / ${account.target_units || 0}`} units
+                    </div>
+                    {!isNoTarget && (
+                      <div className="w-full bg-gray-700 rounded-full h-2">
+                        <div
+                          className={`h-full ${getProgressBarColor(progress)} rounded-full`}
+                          style={{ width: `${Math.min(progress, 100)}%` }}
+                        />
                       </div>
                     )}
                   </div>
+                ) : (
+                  <div className="mb-3 text-gray-500 text-sm">⚠️ Not on promo</div>
                 )}
 
-                {/* Progress Bar */}
-                <div className="mb-3">
-                  <div className="flex items-center justify-between text-sm mb-2">
-                    <span className="text-gray-300">
-                      {unitsSold} / {account.target_units || 0} units
-                    </span>
+                {/* Notes */}
+                {hasNotes && (
+                  <div 
+                    className="mb-3 p-2 bg-gray-700/50 rounded text-sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (onViewNotes) onViewNotes(account)
+                    }}
+                  >
+                    <span className="text-yellow-400 mr-2">📝</span>
+                    <span className="text-gray-300">{truncateNotes(account.notes, 80)}</span>
                   </div>
-                  <div className="w-full bg-gray-700 rounded-full h-3">
-                    <div
-                      className={`h-full ${getProgressBarColor(progress)} rounded-full transition-all duration-300`}
-                      style={{ width: `${Math.min(progress, 100)}%` }}
-                    />
-                  </div>
-                </div>
+                )}
 
-                {/* Action Buttons - Touch Friendly (44px height) */}
-                <div className="grid grid-cols-3 gap-2">
+                {/* Actions */}
+                <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
                   <button
                     onClick={() => onQuickLog(account, account.promoData)}
-                    className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium py-3 rounded-lg transition flex items-center justify-center space-x-2"
+                    className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded transition"
                   >
-                    <span>📝</span>
-                    <span>Log</span>
+                    Log Units
                   </button>
                   <button
                     onClick={() => onViewNotes && onViewNotes(account)}
-                    className="bg-gray-700 hover:bg-gray-600 active:bg-gray-800 text-white font-medium py-3 rounded-lg transition flex items-center justify-center space-x-2"
+                    className="px-3 py-2 bg-gray-600 hover:bg-gray-500 text-white text-sm rounded transition"
                   >
-                    <span>💬</span>
-                    <span>Notes</span>
+                    💬
                   </button>
                   <button
                     onClick={() => onAssignPromo(account, account.promoData)}
-                    className="bg-gray-600 hover:bg-gray-500 active:bg-gray-700 text-white font-medium py-3 rounded-lg transition flex items-center justify-center space-x-2"
+                    className="px-3 py-2 bg-gray-600 hover:bg-gray-500 text-white text-sm font-medium rounded transition"
                   >
-                    <span>✏️</span>
-                    <span>Edit</span>
+                    {account.promo_name ? 'Edit' : 'Assign'}
                   </button>
                 </div>
               </div>
@@ -293,7 +282,7 @@ const AccountListView = ({
           })
         )}
       </div>
-    </>
+    </div>
   )
 }
 
