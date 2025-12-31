@@ -39,6 +39,7 @@ const Dashboard = () => {
   const [showQuarterManagement, setShowQuarterManagement] = useState(false)
   const [showAccountNotes, setShowAccountNotes] = useState(false)
   const [showNotificationSettings, setShowNotificationSettings] = useState(false)
+  const [showChangePassword, setShowChangePassword] = useState(false)
   const [newAccountName, setNewAccountName] = useState('')
   const [selectedAccount, setSelectedAccount] = useState(null)
   const [selectedAccountPromo, setSelectedAccountPromo] = useState(null)
