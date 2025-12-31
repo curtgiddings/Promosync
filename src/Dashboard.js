@@ -822,6 +822,15 @@ const Dashboard = () => {
           onClose={() => setShowNotificationSettings(false)}
         />
       )}
+{showChangePassword && (
+        <ChangePassword
+          user={user}
+          onClose={() => setShowChangePassword(false)}
+          onSuccess={() => {
+            alert('Password changed successfully!')
+          }}
+        />
+      )}
     </div>
   )
 }
