@@ -858,6 +858,17 @@ const handleViewRepBreakdown = (account, promo) => {
           }}
         />
       )}
+        {showRepBreakdown && selectedAccount && (
+        <RepBreakdown
+          account={selectedAccount}
+          promo={selectedAccountPromo}
+          onClose={() => {
+            setShowRepBreakdown(false)
+            setSelectedAccount(null)
+            setSelectedAccountPromo(null)
+          }}
+        />
+      )}
     </div>
   )
 }
