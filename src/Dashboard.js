@@ -719,6 +719,7 @@ const handleViewRepBreakdown = (account, promo) => {
             }}
             showPace={showPace}
             quarterProgress={quarterProgress}
+              onViewRepBreakdown={handleViewRepBreakdown}
           />
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -729,6 +730,11 @@ const handleViewRepBreakdown = (account, promo) => {
                 onAssignPromo={(acc, promo) => handleAssignPromo(acc, promo)}
                 onQuickLog={(acc, promo) => handleQuickLog(acc, promo)}
                 onUpdate={handleRefresh}
+                  onViewNotes={(account) => {
+                  setSelectedAccount(account)
+                  setShowAccountNotes(true)
+                }}
+                onViewRepBreakdown={handleViewRepBreakdown}
               />
             ))}
           </div>
