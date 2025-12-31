@@ -412,7 +412,13 @@ const Dashboard = () => {
               >
                 🔔
               </button>
-              
+              <button
+                  onClick={() => setShowChangePassword(true)}
+                  className="p-2 bg-gray-700/80 hover:bg-gray-600 text-white rounded-lg transition"
+                  title="Change Password"
+                >
+                  🔐
+                </button>
               <button
                 onClick={signOut}
                 className="px-4 py-2 bg-gray-700/80 hover:bg-gray-600 text-white rounded-lg transition font-medium text-sm"
