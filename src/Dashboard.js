@@ -270,7 +270,11 @@ const Dashboard = () => {
       }
     }
     
-    return matchesSearch && matchesTerritory && matchesStatus
+    // Check if filtering for "my opportunities" (accounts where current user has 0 units)
+    const myUnits = accountProgress[account.id]?.my_units || 0
+    const matchesMyOpportunities = !myOpportunitiesOnly || myUnits === 0
+    
+    return matchesSearch && matchesTerritory && matchesStatus && matchesMyOpportunities
   }).sort((a, b) => {
     // Sort by most behind pace first
     const progressA = accountProgress[a.id]?.progress || 0
@@ -563,7 +567,17 @@ const handleViewRepBreakdown = (account, promo) => {
                 ))}
               </select>
             </div>
-
+{/* My Opportunities Filter */}
+              <button
+                onClick={() => setMyOpportunitiesOnly(!myOpportunitiesOnly)}
+                className={`px-4 py-3 rounded-lg text-sm font-medium transition ${
+                  myOpportunitiesOnly 
+                    ? 'bg-green-600 text-white' 
+                    : 'bg-gray-700/50 border border-gray-600/50 text-gray-300 hover:bg-gray-600/50'
+                }`}
+              >
+                {myOpportunitiesOnly ? '✓ My Opportunities' : '🎯 My Opportunities'}
+              </button>
             {/* View Toggle */}
             <div className="flex items-center gap-2">
               <div className="flex bg-gray-700/50 rounded-lg p-1 border border-gray-600/50">
