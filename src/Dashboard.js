@@ -44,6 +44,8 @@ const Dashboard = () => {
   const [newAccountName, setNewAccountName] = useState('')
   const [selectedAccount, setSelectedAccount] = useState(null)
   const [selectedAccountPromo, setSelectedAccountPromo] = useState(null)
+  const [showRepBreakdown, setShowRepBreakdown] = useState(false)
+  const [myOpportunitiesOnly, setMyOpportunitiesOnly] = useState(false)
   
   // Quarter data
   const [activeQuarter, setActiveQuarter] = useState(null)
