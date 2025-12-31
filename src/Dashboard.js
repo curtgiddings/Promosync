@@ -347,7 +347,11 @@ const Dashboard = () => {
     setSelectedAccountPromo(currentPromo)
     setShowAssignPromo(true)
   }
-
+const handleViewRepBreakdown = (account, promo) => {
+    setSelectedAccount(account)
+    setSelectedAccountPromo(promo)
+    setShowRepBreakdown(true)
+  }
   const handleRefresh = () => {
     fetchAccounts()
     setActivityRefreshKey(prev => prev + 1) // Trigger ActivityFeed refresh
