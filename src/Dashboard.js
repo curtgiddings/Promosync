@@ -713,7 +713,7 @@ const handleViewRepBreakdown = (account, promo) => {
                 : 'No accounts on promos yet'}
             </p>
             <p className="text-gray-500 text-sm mb-4">
-              Assign accounts to promos to see them here
+              Click "Add to Promo" to get started
             </p>
           </div>
         ) : viewMode === 'list' ? (
