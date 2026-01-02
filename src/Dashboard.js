@@ -15,6 +15,7 @@ import NotificationSettings from './NotificationSettings'
 import Toast from './Toast'
 import ChangePassword from './ChangePassword'
 import RepBreakdown from './RepBreakdown'
+import QuarterReset from './QuarterReset'
 const Dashboard = () => {
   const { user, signOut, isAdmin } = useAuth()
   
