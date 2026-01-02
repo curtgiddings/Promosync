@@ -411,6 +411,13 @@ const handleViewRepBreakdown = (account, promo) => {
                     <span>📅</span>
                     <span>Quarters</span>
                   </button>
+                      <button
+                  onClick={() => setShowQuarterReset(true)}
+                  className="hidden sm:flex items-center space-x-1 px-3 py-1.5 bg-red-700/80 hover:bg-red-600 text-white text-sm rounded-lg transition"
+                >
+                  <span>🔄</span>
+                  <span>End Quarter</span>
+                </button>
                   <span className="px-3 py-1 bg-blue-600/90 text-white text-sm rounded-full font-medium">
                     Admin
                   </span>
