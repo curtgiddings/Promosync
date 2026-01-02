@@ -1,4 +1,3 @@
-import bcrypt from 'bcryptjs'
 import React, { useState } from 'react'
 import { supabase } from './supabaseClient'
 import { useAuth } from './AuthContext'
@@ -10,37 +9,32 @@ const Login = () => {
   const [error, setError] = useState('')
   const { signIn } = useAuth()
 
-const handleSubmit = async (e) => {
+import React, { useState } from 'react'
+import { supabase } from './supabaseClient'
+import { useAuth } from './AuthContext'
+
+const Login = () => {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const { signIn } = useAuth()
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setLoading(true)
 
     try {
-      // Find user by email only
       const { data, error } = await supabase
         .from('reps')
         .select('*')
         .eq('email', email.trim().toLowerCase())
+        .eq('password_hash', password)
         .single()
 
       if (error || !data) {
-        setError('Invalid email or password')
-        setLoading(false)
-        return
-      }
-
-      // Check password - try bcrypt first, then plain text
-      let isValid = false
-      
-      // If hash starts with $2, use bcrypt
-      if (data.password_hash && data.password_hash.startsWith('$2')) {
-        isValid = await bcrypt.compare(password, data.password_hash)
-      } else {
-        // Plain text comparison
-        isValid = (password === data.password_hash)
-      }
-      
-      if (!isValid) {
         setError('Invalid email or password')
         setLoading(false)
         return
@@ -54,7 +48,7 @@ const handleSubmit = async (e) => {
     }
   }
 
-      console.log('Found user, checking password against hash:', data.password_hash)
+  console.log('Found user, checking password against hash:', data.password_hash)
       
       // Check password with bcrypt
       const isValid = await bcrypt.compare(password, data.password_hash)
