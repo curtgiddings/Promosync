@@ -15,11 +15,11 @@ const Login = () => {
     setLoading(true)
 
     try {
+      // Find user by email only
       const { data, error } = await supabase
         .from('reps')
         .select('*')
         .eq('email', email.trim().toLowerCase())
-        .eq('password', password)
         .single()
 
       if (error || !data) {
@@ -28,17 +28,24 @@ const Login = () => {
         return
       }
 
-      // Use AuthContext signIn - this should update the context state
-      signIn(data)
-      // Don't set loading to false - let the context redirect handle it
+      // Check password with bcrypt
+      const bcrypt = await import('bcryptjs')
+      const isValid = await bcrypt.compare(password, data.password_hash)
+      
+      if (!isValid) {
+        setError('Invalid email or password')
+        setLoading(false)
+        return
+      }
 
+      // Use AuthContext signIn
+      signIn(data)
     } catch (err) {
       console.error('Login error:', err)
       setError('An error occurred. Please try again.')
       setLoading(false)
     }
   }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
