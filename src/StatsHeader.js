@@ -315,10 +315,10 @@ const StatsHeader = ({ onFilterBehindPace }) => {
           
           {/* Quarter Progress Label */}
           <div 
-            className="absolute -top-6 transform -translate-x-1/2 text-xs text-blue-400 whitespace-nowrap"
-            style={{ left: `${quarterInfo.progress}%` }}
+            className="absolute top-5 transform -translate-x-1/2 text-xs text-blue-400 whitespace-nowrap"
+            style={{ left: `${Math.max(quarterInfo.progress, 5)}%` }}
           >
-            Expected
+            ↑ Expected
           </div>
         </div>
         
