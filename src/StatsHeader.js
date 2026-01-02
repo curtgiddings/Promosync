@@ -313,15 +313,7 @@ const StatsHeader = ({ onFilterBehindPace }) => {
             title={`${quarterInfo.progress}% through quarter`}
           />
           
-          {/* Quarter Progress Label - hide when too far right */}
-          {quarterInfo.progress < 80 && (
-            <div 
-              className="absolute top-5 transform -translate-x-1/2 text-xs text-blue-400 whitespace-nowrap"
-              style={{ left: `${Math.max(quarterInfo.progress, 5)}%` }}
-            >
-              ↑ Expected
-            </div>
-          )}
+         
         </div>
         
         {/* Legend */}
