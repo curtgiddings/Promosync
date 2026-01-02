@@ -16,8 +16,6 @@ const handleSubmit = async (e) => {
     setLoading(true)
 
     try {
-      console.log('Trying email:', email.trim().toLowerCase())
-      
       // Find user by email only
       const { data, error } = await supabase
         .from('reps')
@@ -25,13 +23,36 @@ const handleSubmit = async (e) => {
         .eq('email', email.trim().toLowerCase())
         .single()
 
-      console.log('Query result:', { data, error })
-
       if (error || !data) {
         setError('Invalid email or password')
         setLoading(false)
         return
       }
+
+      // Check password - try bcrypt first, then plain text
+      let isValid = false
+      
+      // If hash starts with $2, use bcrypt
+      if (data.password_hash && data.password_hash.startsWith('$2')) {
+        isValid = await bcrypt.compare(password, data.password_hash)
+      } else {
+        // Plain text comparison
+        isValid = (password === data.password_hash)
+      }
+      
+      if (!isValid) {
+        setError('Invalid email or password')
+        setLoading(false)
+        return
+      }
+
+      signIn(data)
+    } catch (err) {
+      console.error('Login error:', err)
+      setError('An error occurred. Please try again.')
+      setLoading(false)
+    }
+  }
 
       console.log('Found user, checking password against hash:', data.password_hash)
       
