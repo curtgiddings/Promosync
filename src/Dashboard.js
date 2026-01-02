@@ -878,6 +878,16 @@ const handleViewRepBreakdown = (account, promo) => {
           }}
         />
       )}
+{showQuarterReset && (
+        <QuarterReset
+          activeQuarter={activeQuarter}
+          onClose={() => setShowQuarterReset(false)}
+          onSuccess={() => {
+            setShowQuarterReset(false)
+            handleRefresh()
+          }}
+        />
+      )}
     </div>
   )
 }
