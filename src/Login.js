@@ -10,12 +10,14 @@ const Login = () => {
   const [error, setError] = useState('')
   const { signIn } = useAuth()
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setLoading(true)
 
     try {
+      console.log('Trying email:', email.trim().toLowerCase())
+      
       // Find user by email only
       const { data, error } = await supabase
         .from('reps')
@@ -23,14 +25,19 @@ const Login = () => {
         .eq('email', email.trim().toLowerCase())
         .single()
 
+      console.log('Query result:', { data, error })
+
       if (error || !data) {
         setError('Invalid email or password')
         setLoading(false)
         return
       }
 
+      console.log('Found user, checking password against hash:', data.password_hash)
+      
       // Check password with bcrypt
       const isValid = await bcrypt.compare(password, data.password_hash)
+      console.log('Password valid:', isValid)
       
       if (!isValid) {
         setError('Invalid email or password')
@@ -38,6 +45,14 @@ const Login = () => {
         return
       }
 
+      // Use AuthContext signIn
+      signIn(data)
+    } catch (err) {
+      console.error('Login error:', err)
+      setError('An error occurred. Please try again.')
+      setLoading(false)
+    }
+  }
       // Use AuthContext signIn
       signIn(data)
     } catch (err) {
