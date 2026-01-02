@@ -7,17 +7,6 @@ const Login = () => {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const { signIn } = useAuth()
-
-import React, { useState } from 'react'
-import { supabase } from './supabaseClient'
-import { useAuth } from './AuthContext'
-
-const Login = () => {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
 
   const { signIn } = useAuth()
 
@@ -48,34 +37,6 @@ const Login = () => {
     }
   }
 
-  console.log('Found user, checking password against hash:', data.password_hash)
-      
-      // Check password with bcrypt
-      const isValid = await bcrypt.compare(password, data.password_hash)
-      console.log('Password valid:', isValid)
-      
-      if (!isValid) {
-        setError('Invalid email or password')
-        setLoading(false)
-        return
-      }
-
-      // Use AuthContext signIn
-      signIn(data)
-    } catch (err) {
-      console.error('Login error:', err)
-      setError('An error occurred. Please try again.')
-      setLoading(false)
-    }
-  }
-      // Use AuthContext signIn
-      signIn(data)
-    } catch (err) {
-      console.error('Login error:', err)
-      setError('An error occurred. Please try again.')
-      setLoading(false)
-    }
-  }
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -133,12 +94,6 @@ const Login = () => {
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
-
-          <div className="mt-6 pt-6 border-t border-gray-700">
-            <p className="text-center text-gray-400 text-sm">
-              Demo: Create a rep in Supabase to test
-            </p>
-          </div>
         </div>
       </div>
     </div>
