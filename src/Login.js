@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs'
 import React, { useState } from 'react'
 import { supabase } from './supabaseClient'
 import { useAuth } from './AuthContext'
