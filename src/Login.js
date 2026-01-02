@@ -30,7 +30,6 @@ const Login = () => {
       }
 
       // Check password with bcrypt
-      const bcrypt = await import('bcryptjs')
       const isValid = await bcrypt.compare(password, data.password_hash)
       
       if (!isValid) {
