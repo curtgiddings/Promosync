@@ -6,10 +6,9 @@ import { useAuth } from './AuthContext'
  * AssignPromo Modal
  * 
  * Modal for assigning or changing an account's promo.
- * Now with duplicate prevention:
- * - Checks if account already has a promo
- * - Shows warning if trying to add second promo
- * - Requires confirmation to replace existing promo
+ * Now with:
+ * - Territory editing (multi-select)
+ * - Duplicate prevention
  */
 
 const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
@@ -18,13 +17,19 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
   const [selectedPromo, setSelectedPromo] = useState('')
   const [targetUnits, setTargetUnits] = useState('')
   const [terms, setTerms] = useState('')
-  const [initialUnits, setInitialUnits] = useState('') // Optional starting units
+  const [initialUnits, setInitialUnits] = useState('')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  
+  // Territory editing
+  const [territories, setTerritories] = useState([])
+  const [selectedTerritories, setSelectedTerritories] = useState([])
+  const [showTerritoryDropdown, setShowTerritoryDropdown] = useState(false)
 
   useEffect(() => {
     fetchPromos()
+    fetchTerritories()
     
     // Pre-fill if editing existing promo (passed from parent)
     if (currentPromo) {
@@ -32,7 +37,38 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
       setTargetUnits(currentPromo.target_units)
       setTerms(currentPromo.terms || '30/60/90/120')
     }
-  }, [currentPromo])
+    
+    // Pre-fill territories from account
+    if (account?.territory) {
+      const existingTerritories = account.territory.split(',').map(t => t.trim()).filter(Boolean)
+      setSelectedTerritories(existingTerritories)
+    }
+  }, [currentPromo, account])
+
+  const fetchTerritories = async () => {
+    try {
+      const { data } = await supabase
+        .from('accounts')
+        .select('territory')
+        .not('territory', 'is', null)
+      
+      // Get unique territories (splitting any comma-separated ones)
+      const allTerritories = []
+      data?.forEach(a => {
+        if (a.territory) {
+          a.territory.split(',').forEach(t => {
+            const trimmed = t.trim()
+            if (trimmed && !allTerritories.includes(trimmed)) {
+              allTerritories.push(trimmed)
+            }
+          })
+        }
+      })
+      setTerritories(allTerritories.sort())
+    } catch (err) {
+      console.error('Error fetching territories:', err)
+    }
+  }
 
   const fetchPromos = async () => {
     try {
@@ -69,6 +105,17 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
     setError('')
 
     try {
+      // Update account territory if changed
+      const newTerritory = selectedTerritories.length > 0 ? selectedTerritories.join(', ') : null
+      if (newTerritory !== account.territory) {
+        const { error: territoryError } = await supabase
+          .from('accounts')
+          .update({ territory: newTerritory })
+          .eq('id', account.id)
+        
+        if (territoryError) throw territoryError
+      }
+
       if (currentPromo) {
         // Update existing assignment
         const { error: updateError } = await supabase
@@ -97,8 +144,6 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
         if (insertError) throw insertError
       }
 
-      // Success!
-      
       // Log activity
       try {
         await supabase
@@ -113,10 +158,10 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
             }
           })
       } catch (e) {
-        // Activity logging is optional, don't block on failure
+        // Activity logging is optional
       }
 
-      // Send email notification (only for NEW assignments, not edits)
+      // Send email notification (only for NEW assignments)
       if (!currentPromo) {
         try {
           await fetch('/api/notify-promo-assigned', {
@@ -125,7 +170,7 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
             body: JSON.stringify({
               accountId: account.id,
               accountName: account.account_name,
-              territory: account.territory,
+              territory: newTerritory,
               promoName: promos.find(p => p.id === selectedPromo)?.promo_name,
               targetUnits: parseInt(targetUnits),
               terms: terms || null,
@@ -133,7 +178,6 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
             })
           })
         } catch (e) {
-          // Email notification is optional, don't block on failure
           console.log('Email notification skipped:', e)
         }
       }
@@ -150,7 +194,6 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
               notes: 'Initial units on promo assignment'
             })
 
-          // Log the transaction activity
           await supabase
             .from('activity_log')
             .insert({
@@ -171,7 +214,7 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
       onClose()
     } catch (err) {
       console.error('Error assigning promo:', err)
-      setError('Failed to assign promo. Please try again.')
+      setError('Failed to save changes. Please try again.')
     } finally {
       setSubmitting(false)
     }
@@ -181,24 +224,20 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
     const promoId = e.target.value
     setSelectedPromo(promoId)
     
-    // Auto-fill default target and terms based on promo
     const selectedPromoData = promos.find(p => String(p.id) === String(promoId))
     if (selectedPromoData) {
-      // Extract target from promo name (e.g., "SY125" -> 125)
       const match = selectedPromoData.promo_name.match(/\d+/)
       if (match && !targetUnits) {
         setTargetUnits(match[0])
       }
-      
-      // Always auto-fill terms from promo
       setTerms(selectedPromoData.terms || '')
     }
   }
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-xl max-w-md w-full shadow-2xl border border-gray-700/50">
-        <div className="p-6">
+      <div className="bg-gray-900 rounded-xl max-w-md w-full shadow-2xl border border-gray-700/50 max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="p-6 flex-1 overflow-y-auto">
           {/* Header */}
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-semibold text-white">
@@ -218,7 +257,7 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
               <span className="text-2xl">🏢</span>
               <div>
                 <p className="text-lg font-semibold text-white">{account.account_name}</p>
-                <p className="text-sm text-gray-400">📍 {account.territory}</p>
+                <p className="text-sm text-gray-400">📍 {selectedTerritories.length > 0 ? selectedTerritories.join(', ') : 'No territory'}</p>
               </div>
             </div>
           </div>
@@ -230,7 +269,7 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
             </div>
           )}
 
-          {/* Form - Always show */}
+          {/* Form */}
           {loading ? (
             <div className="text-center py-8">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
@@ -238,103 +277,171 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Territory Multi-Select */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Territory/Territories
+                </label>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowTerritoryDropdown(!showTerritoryDropdown)}
+                    className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-left text-white focus:outline-none focus:ring-2 focus:ring-blue-500 flex justify-between items-center"
+                  >
+                    <span className={selectedTerritories.length === 0 ? 'text-gray-500' : ''}>
+                      {selectedTerritories.length === 0 
+                        ? 'Select territories...' 
+                        : `${selectedTerritories.length} selected`}
+                    </span>
+                    <span className="text-gray-400">{showTerritoryDropdown ? '▲' : '▼'}</span>
+                  </button>
+                  
+                  {showTerritoryDropdown && (
+                    <div className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                      {territories.map(t => (
+                        <label
+                          key={t}
+                          className="flex items-center px-4 py-2 hover:bg-gray-700 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedTerritories.includes(t)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedTerritories([...selectedTerritories, t])
+                              } else {
+                                setSelectedTerritories(selectedTerritories.filter(x => x !== t))
+                              }
+                            }}
+                            className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-800"
+                          />
+                          <span className="ml-3 text-white">{t}</span>
+                        </label>
+                      ))}
+                      {territories.length === 0 && (
+                        <p className="px-4 py-2 text-gray-500 text-sm">No territories found</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {selectedTerritories.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {selectedTerritories.map(t => (
+                      <span 
+                        key={t}
+                        className="inline-flex items-center px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded"
+                      >
+                        {t}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTerritories(selectedTerritories.filter(x => x !== t))}
+                          className="ml-1 hover:text-white"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Promo Dropdown */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Select Promo <span className="text-red-400">*</span>
-                    </label>
-                    <select
-                      value={selectedPromo}
-                      onChange={handlePromoChange}
-                      className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      required
-                    >
-                      <option value="">Choose a promo...</option>
-                      {promos.map((promo) => (
-                        <option key={promo.id} value={promo.id}>
-                          {promo.promo_name} - {promo.discount}% off
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  Select Promo <span className="text-red-400">*</span>
+                </label>
+                <select
+                  value={selectedPromo}
+                  onChange={handlePromoChange}
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                >
+                  <option value="">Choose a promo...</option>
+                  {promos.map((promo) => (
+                    <option key={promo.id} value={promo.id}>
+                      {promo.promo_name} {promo.discount ? `- ${promo.discount}% off` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                  {/* Target Units */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Target Units <span className="text-red-400">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      value={targetUnits}
-                      onChange={(e) => setTargetUnits(e.target.value)}
-                      min="1"
-                      className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Enter target units"
-                      required
-                    />
-                  </div>
+              {/* Target Units */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Target Units <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={targetUnits}
+                  onChange={(e) => setTargetUnits(e.target.value)}
+                  min="1"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter target units"
+                  required
+                />
+              </div>
 
-                  {/* Payment Terms */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Payment Terms
-                    </label>
-                    <select
-                      value={terms}
-                      onChange={(e) => setTerms(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="">No terms</option>
-                      <option value="30/60/90">30/60/90</option>
-                      <option value="30/60/90/120">30/60/90/120</option>
-                      <option value="30/60/90/120/150">30/60/90/120/150</option>
-                    </select>
-                  </div>
+              {/* Payment Terms */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Payment Terms
+                </label>
+                <select
+                  value={terms}
+                  onChange={(e) => setTerms(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">No terms</option>
+                  <option value="30/60/90">30/60/90</option>
+                  <option value="30/60/90/120">30/60/90/120</option>
+                  <option value="30/60/90/120/150">30/60/90/120/150</option>
+                </select>
+              </div>
 
-                  {/* Initial Units - Only show for new assignments */}
-                  {!currentPromo && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Initial Units <span className="text-gray-500">(optional)</span>
-                      </label>
-                      <input
-                        type="number"
-                        value={initialUnits}
-                        onChange={(e) => setInitialUnits(e.target.value)}
-                        min="0"
-                        className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Log starting units (optional)"
-                      />
-                      <p className="mt-1 text-xs text-gray-500">Already have units sold? Add them now.</p>
-                    </div>
-                  )}
-
-                  {/* Action Buttons */}
-                  <div className="flex space-x-3 pt-4">
-                    <button
-                      type="button"
-                      onClick={onClose}
-                      className="flex-1 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg transition"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={submitting}
-                      className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition shadow-lg shadow-blue-600/30"
-                    >
-                      {submitting ? (
-                        <span className="flex items-center justify-center space-x-2">
-                          <span className="animate-spin">⏳</span>
-                          <span>Saving...</span>
-                        </span>
-                      ) : (
-                        currentPromo ? 'Update Promo' : 'Assign Promo'
-                      )}
-                    </button>
-                  </div>
-                </form>
+              {/* Initial Units - Only show for new assignments */}
+              {!currentPromo && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Initial Units <span className="text-gray-500">(optional)</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={initialUnits}
+                    onChange={(e) => setInitialUnits(e.target.value)}
+                    min="0"
+                    className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Log starting units (optional)"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Already have units sold? Add them now.</p>
+                </div>
               )}
+
+              {/* Action Buttons */}
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition shadow-lg shadow-blue-600/30"
+                >
+                  {submitting ? (
+                    <span className="flex items-center justify-center space-x-2">
+                      <span className="animate-spin">⏳</span>
+                      <span>Saving...</span>
+                    </span>
+                  ) : (
+                    currentPromo ? 'Update' : 'Assign Promo'
+                  )}
+                </button>
+              </div>
+            </form>
+          )}
 
           {/* Help Text */}
           <div className="mt-4 pt-4 border-t border-gray-700/50 text-sm text-gray-500">
