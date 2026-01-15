@@ -27,8 +27,9 @@ const AddAccountToPromo = ({ onClose, onSuccess, onAddNew }) => {
   // New account fields
   const [newAccountName, setNewAccountName] = useState('')
   const [newAccountNumber, setNewAccountNumber] = useState('')
-  const [newTerritory, setNewTerritory] = useState('')
+  const [selectedTerritories, setSelectedTerritories] = useState([])
   const [territories, setTerritories] = useState([])
+  const [showTerritoryDropdown, setShowTerritoryDropdown] = useState(false)
   
   // Promo assignment
   const [promos, setPromos] = useState([])
@@ -188,7 +189,7 @@ const AddAccountToPromo = ({ onClose, onSuccess, onAddNew }) => {
           .insert({
             account_name: newAccountName.trim(),
             account_number: newAccountNumber || null,
-            territory: newTerritory || null
+            territory: selectedTerritories.length > 0 ? selectedTerritories.join(', ') : null
           })
           .select()
           .single()
@@ -247,7 +248,7 @@ const AddAccountToPromo = ({ onClose, onSuccess, onAddNew }) => {
           body: JSON.stringify({
             accountId: accountId,
             accountName: accountName,
-            territory: step === 3 ? newTerritory : selectedAccount?.territory,
+            territory: step === 3 ? selectedTerritories.join(', ') : selectedAccount?.territory,
             promoName: promos.find(p => p.id === selectedPromo)?.promo_name,
             targetUnits: parseInt(targetUnits),
             terms: terms || null,
@@ -298,7 +299,7 @@ const AddAccountToPromo = ({ onClose, onSuccess, onAddNew }) => {
     setSelectedAccount(null)
     setNewAccountName('')
     setNewAccountNumber('')
-    setNewTerritory('')
+    setSelectedTerritories([])
     setSelectedPromo('')
     setTargetUnits('')
     setTerms('')
@@ -594,21 +595,72 @@ const AddAccountToPromo = ({ onClose, onSuccess, onAddNew }) => {
                 />
               </div>
 
-              {/* Territory */}
+              {/* Territory Multi-Select */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Territory
+                  Territory/Territories
                 </label>
-                <select
-                  value={newTerritory}
-                  onChange={(e) => setNewTerritory(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select territory...</option>
-                  {territories.map(t => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowTerritoryDropdown(!showTerritoryDropdown)}
+                    className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-left text-white focus:outline-none focus:ring-2 focus:ring-blue-500 flex justify-between items-center"
+                  >
+                    <span className={selectedTerritories.length === 0 ? 'text-gray-500' : ''}>
+                      {selectedTerritories.length === 0 
+                        ? 'Select territories...' 
+                        : selectedTerritories.join(', ')}
+                    </span>
+                    <span className="text-gray-400">{showTerritoryDropdown ? '▲' : '▼'}</span>
+                  </button>
+                  
+                  {showTerritoryDropdown && (
+                    <div className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                      {territories.map(t => (
+                        <label
+                          key={t}
+                          className="flex items-center px-4 py-2 hover:bg-gray-700 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedTerritories.includes(t)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedTerritories([...selectedTerritories, t])
+                              } else {
+                                setSelectedTerritories(selectedTerritories.filter(x => x !== t))
+                              }
+                            }}
+                            className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-800"
+                          />
+                          <span className="ml-3 text-white">{t}</span>
+                        </label>
+                      ))}
+                      {territories.length === 0 && (
+                        <p className="px-4 py-2 text-gray-500 text-sm">No territories found</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {selectedTerritories.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {selectedTerritories.map(t => (
+                      <span 
+                        key={t}
+                        className="inline-flex items-center px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded"
+                      >
+                        {t}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTerritories(selectedTerritories.filter(x => x !== t))}
+                          className="ml-1 hover:text-white"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Section: Promo Info */}
