@@ -117,18 +117,43 @@ const AssignPromo = ({ account, currentPromo, onClose, onSuccess }) => {
       }
 
       if (currentPromo) {
-        // Update existing assignment
-        const { error: updateError } = await supabase
-          .from('account_promos')
-          .update({
-            promo_id: selectedPromo,
-            target_units: parseInt(targetUnits),
-            terms: terms,
-            assigned_date: new Date().toISOString()
-          })
-          .eq('id', currentPromo.id)
+        // Update existing assignment - handle different ID property names
+        const promoAssignmentId = currentPromo.id || currentPromo.account_promo_id || currentPromo.assignment_id
+        
+        if (!promoAssignmentId) {
+          // If no ID, find the assignment by account_id
+          const { data: existingPromo } = await supabase
+            .from('account_promos')
+            .select('id')
+            .eq('account_id', account.id)
+            .single()
+          
+          if (existingPromo) {
+            const { error: updateError } = await supabase
+              .from('account_promos')
+              .update({
+                promo_id: selectedPromo,
+                target_units: parseInt(targetUnits),
+                terms: terms,
+                assigned_date: new Date().toISOString()
+              })
+              .eq('id', existingPromo.id)
 
-        if (updateError) throw updateError
+            if (updateError) throw updateError
+          }
+        } else {
+          const { error: updateError } = await supabase
+            .from('account_promos')
+            .update({
+              promo_id: selectedPromo,
+              target_units: parseInt(targetUnits),
+              terms: terms,
+              assigned_date: new Date().toISOString()
+            })
+            .eq('id', promoAssignmentId)
+
+          if (updateError) throw updateError
+        }
       } else {
         // Create new assignment
         const { error: insertError } = await supabase
