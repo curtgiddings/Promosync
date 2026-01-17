@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { supabase } from './supabaseClient'
-import bcrypt from 'bcryptjs'
 
 function ChangePassword({ user, onClose, onSuccess }) {
   const [currentPassword, setCurrentPassword] = useState('')
@@ -14,7 +13,6 @@ function ChangePassword({ user, onClose, onSuccess }) {
     setError('')
     setLoading(true)
 
-    // Validation
     if (!currentPassword || !newPassword || !confirmPassword) {
       setError('All fields are required')
       setLoading(false)
@@ -34,7 +32,7 @@ function ChangePassword({ user, onClose, onSuccess }) {
     }
 
     try {
-      // Fetch current user to verify password
+      // Verify current password
       const { data: userData, error: fetchError } = await supabase
         .from('reps')
         .select('password_hash')
@@ -43,26 +41,20 @@ function ChangePassword({ user, onClose, onSuccess }) {
 
       if (fetchError) throw fetchError
 
-      // Verify current password
-      const isValid = await bcrypt.compare(currentPassword, userData.password_hash)
-      if (!isValid) {
+      if (currentPassword !== userData.password_hash) {
         setError('Current password is incorrect')
         setLoading(false)
         return
       }
 
-      // Hash new password
-      const newHash = await bcrypt.hash(newPassword, 10)
-
       // Update password
       const { error: updateError } = await supabase
         .from('reps')
-        .update({ password_hash: newHash })
+        .update({ password_hash: newPassword })
         .eq('id', user.id)
 
       if (updateError) throw updateError
 
-      // Success
       if (onSuccess) onSuccess()
       onClose()
 
@@ -77,7 +69,6 @@ function ChangePassword({ user, onClose, onSuccess }) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
-        {/* Header */}
         <div className="flex justify-between items-center p-4 border-b border-gray-700">
           <h2 className="text-xl font-semibold text-white">Change Password</h2>
           <button
@@ -88,7 +79,6 @@ function ChangePassword({ user, onClose, onSuccess }) {
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           {error && (
             <div className="bg-red-500 bg-opacity-20 border border-red-500 text-red-400 px-4 py-2 rounded">
