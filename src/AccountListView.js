@@ -2,10 +2,13 @@ import { useState } from 'react'
 
 function AccountListView({ accounts, accountProgress, onAssignPromo, onQuickLog, onViewNotes, onViewRepBreakdown }) {
   
-  const getProgress = (account) => {
-    const progressData = accountProgress[account.id]
-    if (!progressData) return 0
-    return progressData.progress || 0
+ const getProgress = (account) => {
+    const progress = accountProgress[account.id]
+    if (!progress) return 0
+    const target = progress.target_units || 0
+    const units = progress.units_sold || 0
+    if (target === 0) return 0
+    return Math.round((units / target) * 100)
   }
 
   const getStatusColor = (progress) => {
