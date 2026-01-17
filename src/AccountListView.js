@@ -1,5 +1,3 @@
-import { useState } from 'react'
-
 function AccountListView({ accounts, accountProgress, onAssignPromo, onQuickLog, onViewNotes, onViewRepBreakdown }) {
   
  const getProgress = (account) => {
