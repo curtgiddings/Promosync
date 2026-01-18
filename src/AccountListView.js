@@ -1,4 +1,4 @@
-function AccountListView({ accounts, accountProgress, onAssignPromo, onQuickLog, onViewNotes, onViewRepBreakdown }) {
+function AccountListView({ accounts, accountProgress, accountNotes, onAssignPromo, onQuickLog, onViewNotes, onViewRepBreakdown }) {
   
 const getProgress = (account) => {
     const progressData = accountProgress[account.id]
@@ -28,7 +28,7 @@ const getProgress = (account) => {
   }
 
   // Truncate notes for display
-  const truncateNotes = (notes, maxLength = 50) => {
+  const truncateNotes = (notes, maxLength = 40) => {
     if (!notes) return ''
     if (notes.length <= maxLength) return notes
     return notes.substring(0, maxLength) + '...'
@@ -59,7 +59,7 @@ const getProgress = (account) => {
               const progress = getProgress(account)
               const progressData = accountProgress[account.id]
               const isNoTarget = progressData?.no_target || false
-              const hasNotes = account.notes && account.notes.trim().length > 0
+              const recentNote = accountNotes?.[account.id]
 
               return (
                 <div
@@ -132,16 +132,16 @@ const getProgress = (account) => {
 
                   {/* Notes Preview */}
                   <div className="col-span-2">
-                    {hasNotes ? (
+                    {recentNote ? (
                       <div 
                         className="text-sm text-gray-400 truncate cursor-pointer hover:text-gray-300"
                         onClick={(e) => {
                           e.stopPropagation()
                           if (onViewNotes) onViewNotes(account)
                         }}
-                        title={account.notes}
+                        title={recentNote.note}
                       >
-                        📝 {truncateNotes(account.notes)}
+                        📝 {truncateNotes(recentNote.note)}
                       </div>
                     ) : (
                       <span className="text-gray-600 text-sm">-</span>
@@ -186,7 +186,7 @@ const getProgress = (account) => {
             const progress = getProgress(account)
             const progressData = accountProgress[account.id]
             const isNoTarget = progressData?.no_target || false
-            const hasNotes = account.notes && account.notes.trim().length > 0
+            const recentNote = accountNotes?.[account.id]
 
             return (
               <div
@@ -238,7 +238,7 @@ const getProgress = (account) => {
                 )}
 
                 {/* Notes */}
-                {hasNotes && (
+                {recentNote && (
                   <div 
                     className="mb-3 p-2 bg-gray-700/50 rounded text-sm"
                     onClick={(e) => {
@@ -247,7 +247,7 @@ const getProgress = (account) => {
                     }}
                   >
                     <span className="text-yellow-400 mr-2">📝</span>
-                    <span className="text-gray-300">{truncateNotes(account.notes, 80)}</span>
+                    <span className="text-gray-300">{truncateNotes(recentNote.note, 80)}</span>
                   </div>
                 )}
 
@@ -281,4 +281,4 @@ const getProgress = (account) => {
   )
 }
 
-export default AccountListView
+export default AccountListView;
