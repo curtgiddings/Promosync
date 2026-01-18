@@ -232,4 +232,4 @@ const AccountNotes = ({ account, onClose }) => {
   )
 }
 
-export default AccountNotes
+export default AccountNotes;
