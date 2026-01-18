@@ -23,6 +23,7 @@ const Dashboard = () => {
   const [accounts, setAccounts] = useState([])
   const [accountsWithPromos, setAccountsWithPromos] = useState([])
   const [accountProgress, setAccountProgress] = useState({})
+  const [accountNotes, setAccountNotes] = useState({})
   const [loading, setLoading] = useState(true)
   
   // Search and filters
@@ -49,7 +50,6 @@ const Dashboard = () => {
   // Quarter data
   const [activeQuarter, setActiveQuarter] = useState(null)
   const [quarterProgress, setQuarterProgress] = useState(50)
-  const [showPace, setShowPace] = useState(false)
   const [activityRefreshKey, setActivityRefreshKey] = useState(0)
   
   // Toast notifications
@@ -126,6 +126,7 @@ const Dashboard = () => {
       if (accountIdsWithPromos.length === 0) {
         setAccountsWithPromos([])
         setAccountProgress({})
+        setAccountNotes({})
         setLoading(false)
         return
       }
@@ -153,12 +154,43 @@ const Dashboard = () => {
 
       setAccountsWithPromos(enrichedAccounts)
       await calculateAllProgress(enrichedAccounts)
+      await fetchAllAccountNotes(accountIdsWithPromos)
 
     } catch (error) {
       console.error('Error fetching accounts:', error)
       showToast('Failed to load accounts', 'error')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchAllAccountNotes = async (accountIds) => {
+    try {
+      const { data: notes, error } = await supabase
+        .from('account_notes')
+        .select(`
+          id,
+          account_id,
+          note,
+          created_at,
+          reps (name)
+        `)
+        .in('account_id', accountIds)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      // Group by account_id and take only the most recent
+      const notesMap = {}
+      notes?.forEach(note => {
+        if (!notesMap[note.account_id]) {
+          notesMap[note.account_id] = note
+        }
+      })
+
+      setAccountNotes(notesMap)
+    } catch (error) {
+      console.error('Error fetching notes:', error)
     }
   }
 
@@ -234,7 +266,7 @@ const Dashboard = () => {
     setToasts(prev => prev.filter(t => t.id !== id))
   }
 
- const territories = ['all', 'Vancouver', 'Richmond', 'Kelowna']
+  const territories = ['all', 'Vancouver', 'Richmond', 'Kelowna']
 
   const filteredAccounts = accountsWithPromos.filter(account => {
     const matchesSearch = 
@@ -517,7 +549,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Search, Filters, and View Toggle */}
+        {/* Search and Filters */}
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-5 mb-6 shadow-lg">
           <div className="flex flex-col lg:flex-row gap-4 mb-4">
             {/* Search Bar */}
@@ -570,22 +602,6 @@ const Dashboard = () => {
             >
               {myOpportunitiesOnly ? '✓ My Opportunities' : '🎯 My Opportunities'}
             </button>
-
-            {/* Pace Toggle */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowPace(!showPace)}
-                className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center space-x-1.5 ${
-                  showPace
-                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
-                    : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700 border border-gray-600/50'
-                }`}
-                title="Show pace comparison vs quarter timeline"
-              >
-                <span>📊</span>
-                <span className="hidden sm:inline">Pace</span>
-              </button>
-            </div>
           </div>
 
           {/* Status Filter Buttons */}
@@ -678,13 +694,13 @@ const Dashboard = () => {
           <AccountListView
             accounts={filteredAccounts}
             accountProgress={accountProgress}
+            accountNotes={accountNotes}
             onAssignPromo={handleAssignPromo}
             onQuickLog={handleQuickLog}
             onViewNotes={(account) => {
               setSelectedAccount(account)
               setShowAccountNotes(true)
             }}
-            showPace={showPace}
             quarterProgress={quarterProgress}
             onViewRepBreakdown={handleViewRepBreakdown}
           />
@@ -789,6 +805,7 @@ const Dashboard = () => {
           onClose={() => {
             setShowAccountNotes(false)
             setSelectedAccount(null)
+            handleRefresh()
           }}
         />
       )}
@@ -836,4 +853,4 @@ const Dashboard = () => {
   )
 }
 
-export default Dashboard
+export default Dashboard;
