@@ -179,11 +179,22 @@ const AccountNotes = ({ account, onClose }) => {
           ) : (
             <div className="space-y-3">
               {notes.map((note, index) => (
-                <div
+               <div
                   key={note.id || index}
                   className="p-4 bg-gray-800/50 border border-gray-700/50 rounded-lg"
                 >
-                  <p className="text-gray-200">{note.note}</p>
+                  <div className="flex justify-between items-start">
+                    <p className="text-gray-200 flex-1">{note.note}</p>
+                    {note.id !== 'legacy' && (
+                      <button
+                        onClick={() => deleteNote(note.id)}
+                        className="ml-2 text-gray-500 hover:text-red-400 transition text-sm"
+                        title="Delete note"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
                   <div className="flex items-center space-x-2 mt-2 text-xs text-gray-500">
                     {note.reps?.name && (
                       <>
@@ -194,10 +205,6 @@ const AccountNotes = ({ account, onClose }) => {
                     <span>{getTimeAgo(note.created_at)}</span>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
 
         {/* Help Text */}
         <div className="p-4 border-t border-gray-700/50 flex-shrink-0">
