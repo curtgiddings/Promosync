@@ -105,6 +105,21 @@ const AccountNotes = ({ account, onClose }) => {
       setSaving(false)
     }
   }
+  const deleteNote = async (noteId) => {
+    if (!window.confirm('Delete this note?')) return
+    
+    try {
+      const { error } = await supabase
+        .from('account_notes')
+        .delete()
+        .eq('id', noteId)
+
+      if (error) throw error
+      await fetchNotes()
+    } catch (error) {
+      console.error('Error deleting note:', error)
+    }
+  }
 
   const getTimeAgo = (dateString) => {
     if (!dateString) return 'previously'
