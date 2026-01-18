@@ -225,4 +225,4 @@ function RepBreakdown({ account, promo, onClose }) {
   )
 }
 
-export default RepBreakdown
+export default RepBreakdown;
