@@ -105,6 +105,7 @@ const AccountNotes = ({ account, onClose }) => {
       setSaving(false)
     }
   }
+
   const deleteNote = async (noteId) => {
     if (!window.confirm('Delete this note?')) return
     
@@ -194,7 +195,7 @@ const AccountNotes = ({ account, onClose }) => {
           ) : (
             <div className="space-y-3">
               {notes.map((note, index) => (
-               <div
+                <div
                   key={note.id || index}
                   className="p-4 bg-gray-800/50 border border-gray-700/50 rounded-lg"
                 >
@@ -220,6 +221,10 @@ const AccountNotes = ({ account, onClose }) => {
                     <span>{getTimeAgo(note.created_at)}</span>
                   </div>
                 </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Help Text */}
         <div className="p-4 border-t border-gray-700/50 flex-shrink-0">
