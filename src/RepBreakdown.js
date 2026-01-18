@@ -71,7 +71,6 @@ function RepBreakdown({ account, promo, onClose }) {
           id,
           note,
           created_at,
-          rep_id,
           reps (
             name
           )
