@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { useAuth } from './AuthContext'
 import { supabase } from './supabaseClient'
 import StatsHeader from './StatsHeader'
-import ProgressCard from './ProgressCard'
 import AccountListView from './AccountListView'
 import AssignPromo from './AssignPromo'
 import QuickEntry from './QuickEntry'
@@ -16,17 +15,15 @@ import Toast from './Toast'
 import ChangePassword from './ChangePassword'
 import RepBreakdown from './RepBreakdown'
 import QuarterReset from './QuarterReset'
+
 const Dashboard = () => {
   const { user, signOut, isAdmin } = useAuth()
   
   // Data
   const [accounts, setAccounts] = useState([])
-  const [accountsWithPromos, setAccountsWithPromos] = useState([]) // NEW: Only accounts on promos
+  const [accountsWithPromos, setAccountsWithPromos] = useState([])
   const [accountProgress, setAccountProgress] = useState({})
   const [loading, setLoading] = useState(true)
-  
-  // View toggle
-  const [viewMode, setViewMode] = useState('list') // 'list' or 'card'
   
   // Search and filters
   const [searchTerm, setSearchTerm] = useState('')
@@ -51,9 +48,9 @@ const Dashboard = () => {
   
   // Quarter data
   const [activeQuarter, setActiveQuarter] = useState(null)
-  const [quarterProgress, setQuarterProgress] = useState(50) // Percentage through quarter
-  const [showPace, setShowPace] = useState(false) // Toggle pace indicators
-  const [activityRefreshKey, setActivityRefreshKey] = useState(0) // To trigger ActivityFeed refresh
+  const [quarterProgress, setQuarterProgress] = useState(50)
+  const [showPace, setShowPace] = useState(false)
+  const [activityRefreshKey, setActivityRefreshKey] = useState(0)
   
   // Toast notifications
   const [toasts, setToasts] = useState([])
@@ -98,7 +95,6 @@ const Dashboard = () => {
 
   const fetchAccounts = async () => {
     try {
-      // Fetch accounts with promo data attached - order by assigned_date to get most recent
       const { data: accountPromos, error: promoError } = await supabase
         .from('account_promos')
         .select(`
@@ -118,16 +114,13 @@ const Dashboard = () => {
 
       if (promoError) throw promoError
 
-      // Group by account_id and keep only the most recent promo for each account
       const latestPromosByAccount = {}
       accountPromos.forEach(ap => {
         if (!latestPromosByAccount[ap.account_id]) {
           latestPromosByAccount[ap.account_id] = ap
         }
-        // Since we ordered by assigned_date DESC, the first one we see is the most recent
       })
 
-      // Get account IDs that have promos
       const accountIdsWithPromos = Object.keys(latestPromosByAccount)
 
       if (accountIdsWithPromos.length === 0) {
@@ -137,7 +130,6 @@ const Dashboard = () => {
         return
       }
 
-      // Fetch only accounts that are on promos
       const { data: accountsData, error: accountsError } = await supabase
         .from('accounts')
         .select('*')
@@ -146,7 +138,6 @@ const Dashboard = () => {
 
       if (accountsError) throw accountsError
 
-      // Attach promo data to accounts (using most recent promo)
       const enrichedAccounts = accountsData.map(account => {
         const accountPromo = latestPromosByAccount[account.id]
         return {
@@ -192,17 +183,13 @@ const Dashboard = () => {
         const totalUnits = transactions?.reduce((sum, t) => sum + t.units_sold, 0) || 0
         const progress = account.target_units ? Math.round((totalUnits / account.target_units) * 100) : 0
         
-        // Store both progress and units_sold
         progressMap[account.id] = { progress, units_sold: totalUnits }
-        
-        // Update account object with units_sold
         updatedAccounts[i] = { ...account, units_sold: totalUnits }
       } catch (error) {
         progressMap[account.id] = { progress: 0, units_sold: 0 }
       }
     }
     
-    // Update both states
     setAccountProgress(progressMap)
     setAccountsWithPromos(updatedAccounts)
   }
@@ -216,7 +203,6 @@ const Dashboard = () => {
         .single()
 
       if (error && error.code !== 'PGRST116') {
-        // Table might not exist yet, use default
         console.log('Quarters table not found, using defaults')
         return
       }
@@ -224,7 +210,6 @@ const Dashboard = () => {
       if (data) {
         setActiveQuarter(data)
         
-        // Calculate quarter progress (percentage through quarter)
         const start = new Date(data.start_date)
         const end = new Date(data.end_date)
         const now = new Date()
@@ -262,31 +247,25 @@ const Dashboard = () => {
     if (statusFilter !== 'all') {
       const progress = accountProgress[account.id]?.progress || 0
       if (statusFilter === 'behind_pace') {
-        // Behind pace: progress is more than 10% behind quarter progress
         matchesStatus = progress < 100 && progress < (quarterProgress - 10)
       } else if (statusFilter === 'on_pace') {
-        // On pace: within 10% of quarter progress (but not met target)
         matchesStatus = progress < 100 && progress >= (quarterProgress - 10)
       } else if (statusFilter === 'met') {
         matchesStatus = progress >= 100
       }
     }
     
-    // Check if filtering for "my opportunities" (accounts where current user has 0 units)
     const myUnits = accountProgress[account.id]?.my_units || 0
     const matchesMyOpportunities = !myOpportunitiesOnly || myUnits === 0
     
     return matchesSearch && matchesTerritory && matchesStatus && matchesMyOpportunities
   }).sort((a, b) => {
-    // Sort by most behind pace first
     const progressA = accountProgress[a.id]?.progress || 0
     const progressB = accountProgress[b.id]?.progress || 0
     
-    // Calculate how far behind pace each account is (negative = behind)
     const behindA = progressA - quarterProgress
     const behindB = progressB - quarterProgress
     
-    // Sort: most behind first (lowest behindA value first)
     return behindA - behindB
   })
 
@@ -353,14 +332,16 @@ const Dashboard = () => {
     setSelectedAccountPromo(currentPromo)
     setShowAssignPromo(true)
   }
-const handleViewRepBreakdown = (account, promo) => {
+
+  const handleViewRepBreakdown = (account, promo) => {
     setSelectedAccount(account)
     setSelectedAccountPromo(promo)
     setShowRepBreakdown(true)
   }
+
   const handleRefresh = () => {
     fetchAccounts()
-    setActivityRefreshKey(prev => prev + 1) // Trigger ActivityFeed refresh
+    setActivityRefreshKey(prev => prev + 1)
     showToast('Refreshed!', 'success')
   }
 
@@ -411,13 +392,13 @@ const handleViewRepBreakdown = (account, promo) => {
                     <span>📅</span>
                     <span>Quarters</span>
                   </button>
-                      <button
-                  onClick={() => setShowQuarterReset(true)}
-                  className="hidden sm:flex items-center space-x-1 px-3 py-1.5 bg-red-700/80 hover:bg-red-600 text-white text-sm rounded-lg transition"
-                >
-                  <span>🔄</span>
-                  <span>End Quarter</span>
-                </button>
+                  <button
+                    onClick={() => setShowQuarterReset(true)}
+                    className="hidden sm:flex items-center space-x-1 px-3 py-1.5 bg-red-700/80 hover:bg-red-600 text-white text-sm rounded-lg transition"
+                  >
+                    <span>🔄</span>
+                    <span>End Quarter</span>
+                  </button>
                   <span className="px-3 py-1 bg-blue-600/90 text-white text-sm rounded-full font-medium">
                     Admin
                   </span>
@@ -433,12 +414,12 @@ const handleViewRepBreakdown = (account, promo) => {
                 🔔
               </button>
               <button
-                  onClick={() => setShowChangePassword(true)}
-                  className="p-2 bg-gray-700/80 hover:bg-gray-600 text-white rounded-lg transition"
-                  title="Change Password"
-                >
-                  🔐
-                </button>
+                onClick={() => setShowChangePassword(true)}
+                className="p-2 bg-gray-700/80 hover:bg-gray-600 text-white rounded-lg transition"
+                title="Change Password"
+              >
+                🔐
+              </button>
               <button
                 onClick={signOut}
                 className="px-4 py-2 bg-gray-700/80 hover:bg-gray-600 text-white rounded-lg transition font-medium text-sm"
@@ -482,7 +463,8 @@ const handleViewRepBreakdown = (account, promo) => {
             </button>
           </div>
           
-          <div className="flex gap-3 w-full sm:w-auto">{/* Utility Actions - Touch Friendly */}
+          <div className="flex gap-3 w-full sm:w-auto">
+            {/* Utility Actions - Touch Friendly */}
             <button
               onClick={handleRefresh}
               className="flex-1 sm:flex-none bg-gray-700/80 hover:bg-gray-600 border border-gray-600/50 text-gray-200 font-medium py-3 px-5 rounded-lg transition-all duration-150 flex items-center justify-center space-x-2 min-h-[44px]"
@@ -576,45 +558,21 @@ const handleViewRepBreakdown = (account, promo) => {
                 ))}
               </select>
             </div>
-{/* My Opportunities Filter */}
-              <button
-                onClick={() => setMyOpportunitiesOnly(!myOpportunitiesOnly)}
-                className={`px-4 py-3 rounded-lg text-sm font-medium transition ${
-                  myOpportunitiesOnly 
-                    ? 'bg-green-600 text-white' 
-                    : 'bg-gray-700/50 border border-gray-600/50 text-gray-300 hover:bg-gray-600/50'
-                }`}
-              >
-                {myOpportunitiesOnly ? '✓ My Opportunities' : '🎯 My Opportunities'}
-              </button>
-            {/* View Toggle */}
+
+            {/* My Opportunities Filter */}
+            <button
+              onClick={() => setMyOpportunitiesOnly(!myOpportunitiesOnly)}
+              className={`px-4 py-3 rounded-lg text-sm font-medium transition ${
+                myOpportunitiesOnly 
+                  ? 'bg-green-600 text-white' 
+                  : 'bg-gray-700/50 border border-gray-600/50 text-gray-300 hover:bg-gray-600/50'
+              }`}
+            >
+              {myOpportunitiesOnly ? '✓ My Opportunities' : '🎯 My Opportunities'}
+            </button>
+
+            {/* Pace Toggle */}
             <div className="flex items-center gap-2">
-              <div className="flex bg-gray-700/50 rounded-lg p-1 border border-gray-600/50">
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`px-4 py-2 rounded-md font-medium transition flex items-center space-x-2 ${
-                    viewMode === 'list'
-                      ? 'bg-blue-600 text-white shadow-lg'
-                      : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  <span>☰</span>
-                  <span className="hidden sm:inline">List</span>
-                </button>
-                <button
-                  onClick={() => setViewMode('card')}
-                  className={`px-4 py-2 rounded-md font-medium transition flex items-center space-x-2 ${
-                    viewMode === 'card'
-                      ? 'bg-blue-600 text-white shadow-lg'
-                      : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  <span>▦</span>
-                  <span className="hidden sm:inline">Cards</span>
-                </button>
-              </div>
-              
-              {/* Show Pace Toggle */}
               <button
                 onClick={() => setShowPace(!showPace)}
                 className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center space-x-1.5 ${
@@ -698,7 +656,7 @@ const handleViewRepBreakdown = (account, promo) => {
           </div>
         </div>
 
-        {/* Accounts Display - List or Card View */}
+        {/* Accounts Display - List View Only */}
         {loading ? (
           <div className="text-center py-16">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-4 border-blue-500"></div>
@@ -716,7 +674,7 @@ const handleViewRepBreakdown = (account, promo) => {
               Click "Add to Promo" to get started
             </p>
           </div>
-        ) : viewMode === 'list' ? (
+        ) : (
           <AccountListView
             accounts={filteredAccounts}
             accountProgress={accountProgress}
@@ -728,25 +686,8 @@ const handleViewRepBreakdown = (account, promo) => {
             }}
             showPace={showPace}
             quarterProgress={quarterProgress}
-              onViewRepBreakdown={handleViewRepBreakdown}
+            onViewRepBreakdown={handleViewRepBreakdown}
           />
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {filteredAccounts.map((account) => (
-              <ProgressCard
-                key={account.id}
-                account={account}
-                onAssignPromo={(acc, promo) => handleAssignPromo(acc, promo)}
-                onQuickLog={(acc, promo) => handleQuickLog(acc, promo)}
-                onUpdate={handleRefresh}
-                  onViewNotes={(account) => {
-                  setSelectedAccount(account)
-                  setShowAccountNotes(true)
-                }}
-                onViewRepBreakdown={handleViewRepBreakdown}
-              />
-            ))}
-          </div>
         )}
 
         {/* Activity Feed - Below accounts on desktop, hidden on mobile */}
@@ -858,7 +799,8 @@ const handleViewRepBreakdown = (account, promo) => {
           onClose={() => setShowNotificationSettings(false)}
         />
       )}
-{showChangePassword && (
+
+      {showChangePassword && (
         <ChangePassword
           user={user}
           onClose={() => setShowChangePassword(false)}
@@ -867,7 +809,8 @@ const handleViewRepBreakdown = (account, promo) => {
           }}
         />
       )}
-        {showRepBreakdown && selectedAccount && (
+
+      {showRepBreakdown && selectedAccount && (
         <RepBreakdown
           account={selectedAccount}
           promo={selectedAccountPromo}
@@ -878,7 +821,8 @@ const handleViewRepBreakdown = (account, promo) => {
           }}
         />
       )}
-{showQuarterReset && (
+
+      {showQuarterReset && (
         <QuarterReset
           activeQuarter={activeQuarter}
           onClose={() => setShowQuarterReset(false)}
