@@ -234,14 +234,14 @@ const Dashboard = () => {
     setToasts(prev => prev.filter(t => t.id !== id))
   }
 
-  const territories = ['all', ...new Set(accountsWithPromos.map(a => a.territory).filter(Boolean))]
+ const territories = ['all', 'Vancouver', 'Richmond', 'Kelowna']
 
   const filteredAccounts = accountsWithPromos.filter(account => {
     const matchesSearch = 
       account.account_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       account.territory?.toLowerCase().includes(searchTerm.toLowerCase())
     
-    const matchesTerritory = territoryFilter === 'all' || account.territory === territoryFilter
+    const matchesTerritory = territoryFilter === 'all' || account.territory?.includes(territoryFilter)
     
     let matchesStatus = true
     if (statusFilter !== 'all') {
